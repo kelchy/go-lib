@@ -19,22 +19,22 @@ jobs:
         files: |
           ./log/go.mod
     - name: Get version
-      if: steps.check.outputs.any_changed == "true"
+      if: steps.check.outputs.any_changed == 'true'
       id: checkver
-      run: echo "::set-output name=version::"`head -n 1 ./go.mod | sed "s/\/\///"`
+      run: echo '::set-output name=version::'`head -n 1 ./go.mod | sed 's/\/\///'`
     - name: Version update or file change detected
-      if: steps.check.outputs.any_changed == "true"
+      if: steps.check.outputs.any_changed == 'true'
       uses: actions/setup-go@v3
       with:
-        go-version: ">=1.18.0"
+        go-version: '>=1.18.0'
         cache: true
 
     - name: Test
-      if: steps.check.outputs.any_changed == "true"
+      if: steps.check.outputs.any_changed == 'true'
       run: make test-log
 
     - name: Create a GitHub release
-      if: steps.check.outputs.any_changed == "true"
+      if: steps.check.outputs.any_changed == 'true'
       uses: actions/create-release@v1
       with:
         tag_name: log/v${{ steps.checkver.outputs.version }}
