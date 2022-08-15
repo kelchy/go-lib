@@ -1,4 +1,4 @@
-//v0.0.1
+//v0.0.2
 module github.com/kelchy/go-lib/redis
 
 require (
