@@ -34,7 +34,7 @@ jobs:
 
     - name: Test
       if: steps.check.outputs.any_changed == 'true'
-      run: make test
+      run: make test-log
 
     - name: Create a GitHub release
       if: steps.check.outputs.any_changed == 'true'

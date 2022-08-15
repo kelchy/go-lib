@@ -22,6 +22,6 @@ func main() {
 	erroronly.Error("Erroronly", errors.New("You should see this"))
 
 	// turn off json logging
-	erroronly.JsonDisable()
+	erroronly.JSONDisable()
 	erroronly.Error("Erroronly", errors.New("You should not see this as json"))
 }
