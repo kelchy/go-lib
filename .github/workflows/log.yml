@@ -18,10 +18,11 @@ jobs:
       with:
         files: |
           ./log/go.mod
+    - name: Get version
+      if: steps.check.outputs.any_changed == "true"
+      id: checkver
       outputs:
         version: ${{ steps.current.outputs.version }}
-        type: ${{ steps.current.outputs.version }}
-        commit: ${{ steps.current.outputs.version }}
       steps:
         - id: current
           run: echo "::set-output name=version::"`head -n 1 ./go.mod | sed "s/\/\///"`
@@ -40,9 +41,9 @@ jobs:
       if: steps.check.outputs.any_changed == "true"
       uses: actions/create-release@v1
       with:
-        tag_name: log/v${{ steps.check.outputs.version }}
-        release_name: Release log/v${{ steps.check.outputs.version }}
+        tag_name: log/v${{ steps.checkver.outputs.version }}
+        release_name: Release log/v${{ steps.checkver.outputs.version }}
         body: |
-          Release: log/v${{ steps.check.outputs.version }}
+          Release: log/v${{ steps.checkver.outputs.version }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
