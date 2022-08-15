@@ -11,12 +11,14 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v3
+      with:
+        fetch-depth: 2
     - name: Check file changes
       uses: tj-actions/changed-files@v26
       id: check
       with:
         files: |
-          **/log/go.mod
+          log/go.mod
     - name: Get version
       if: steps.check.outputs.any_changed == 'true'
       id: checkver
