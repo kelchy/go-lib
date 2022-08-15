@@ -21,11 +21,7 @@ jobs:
     - name: Get version
       if: steps.check.outputs.any_changed == "true"
       id: checkver
-      outputs:
-        version: ${{ steps.current.outputs.version }}
-      steps:
-        - id: current
-          run: echo "::set-output name=version::"`head -n 1 ./go.mod | sed "s/\/\///"`
+      run: echo "::set-output name=version::"`head -n 1 ./go.mod | sed "s/\/\///"`
     - name: Version update or file change detected
       if: steps.check.outputs.any_changed == "true"
       uses: actions/setup-go@v3
