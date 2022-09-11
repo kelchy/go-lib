@@ -1,3 +1,4 @@
+//v0.0.1
 module github.com/kelchy/go-lib/mongo
 
 require (
