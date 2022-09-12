@@ -27,7 +27,7 @@ jobs:
       if: steps.check.outputs.any_changed == 'true'
       uses: actions/setup-go@v3
       with:
-        go-version: '>=1.18.0'
+        go-version: '^1.18.1'
         cache: true
 
     - name: Test

@@ -1,11 +1,11 @@
-name: go-publish-log
+name: go-publish-http-server
 on:
   push:
     branches:
-      - log/*
+      - http/server/*
 jobs:
   go-publish:
-    name: go-publish-log
+    name: go-publish-http-server
     runs-on: ubuntu-latest
 
     steps:
@@ -18,11 +18,11 @@ jobs:
       id: check
       with:
         files: |
-          log/go.mod
+          http/server/go.mod
     - name: Get version
       if: steps.check.outputs.any_changed == 'true'
       id: checkver
-      run: echo '::set-output name=version::'`head -n 1 log/go.mod | sed 's/\/\///'`
+      run: echo '::set-output name=version::'`head -n 1 http/server/go.mod | sed 's/\/\///'`
     - name: Version update or file change detected
       if: steps.check.outputs.any_changed == 'true'
       uses: actions/setup-go@v3
@@ -32,15 +32,15 @@ jobs:
 
     - name: Test
       if: steps.check.outputs.any_changed == 'true'
-      run: make test-log
+      run: make test-http SUB=server
 
     - name: Create a GitHub release
       if: steps.check.outputs.any_changed == 'true'
       uses: actions/create-release@v1
       with:
-        tag_name: log/${{ steps.checkver.outputs.version }}
-        release_name: Release log/${{ steps.checkver.outputs.version }}
+        tag_name: http/server/${{ steps.checkver.outputs.version }}
+        release_name: Release http/server/${{ steps.checkver.outputs.version }}
         body: |
-          Release: log/${{ steps.checkver.outputs.version }}
+          Release: http/server/${{ steps.checkver.outputs.version }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

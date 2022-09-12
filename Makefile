@@ -5,7 +5,7 @@ SHELL := /bin/bash
 DIR = log redis
 
 test-%:
-	$(MAKE) GOPATH=$${PWD} test -C $*
+	$(MAKE) GOPATH=$${PWD} test -C $* SUB=${SUB}
 
 test:
 	@for f in ${DIR}; do $(MAKE) test-$${f}; done
