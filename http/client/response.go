@@ -17,7 +17,7 @@ type Res struct {
 	JSON		interface{}
 }
 
-// HTML - method to return the html content of response
+// HTMLparse - method to return the html content of response
 func (r *Res) HTMLparse() {
 	var data bytes.Buffer
 	if r.Error != nil {
@@ -32,7 +32,7 @@ func (r *Res) HTMLparse() {
 	r.HTML = data.String()
 }
 
-// JSON - method to return the json content of response
+// JSONparse - method to return the json content of response
 func (r *Res) JSONparse() {
 	var data interface{}
 	if r.Error != nil {
