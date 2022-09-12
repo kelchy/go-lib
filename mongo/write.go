@@ -7,9 +7,8 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-// InsertMany - function to insert many docs into collection
-//		transactionCtx is only required for transactions, you can pass nil for normal usage
-func (client Client) InsertMany(transactionCtx context.Context, colname string, docs []interface{}, ordered bool) (
+// InsertMany - function to insert many docs into collection, ctx can be nil
+func (client Client) InsertMany(ctx context.Context, colname string, docs []interface{}, ordered bool) (
 	int, []interface{}, error) {
 	// select collection
 	col := client.db.Collection(colname)
@@ -21,10 +20,6 @@ func (client Client) InsertMany(transactionCtx context.Context, colname string, 
 	} else {
 		opts.SetOrdered(false)
 	}
-
-	// set context
-	ctx, cancel := SetContext(transactionCtx, client.timeout)
-	defer cancel()
 
 	// insert
 	/*
@@ -58,15 +53,10 @@ func (client Client) InsertMany(transactionCtx context.Context, colname string, 
 	return len(res), res, e
 }
 
-// InsertOne - function to insert a single doc into collection
-//		transactionCtx is only required for transactions, you can pass nil for normal usage
-func (client Client) InsertOne(transactionCtx context.Context, colname string, doc interface{}) (interface{}, error) {
+// InsertOne - function to insert a single doc into collection, ctx can be nil
+func (client Client) InsertOne(ctx context.Context, colname string, doc interface{}) (interface{}, error) {
 	// select collection
 	col := client.db.Collection(colname)
-
-	// set context
-	ctx, cancel := SetContext(transactionCtx, client.timeout)
-	defer cancel()
 
 	// insert
 	result, e := col.InsertOne(ctx, doc)
@@ -87,16 +77,11 @@ func (client Client) InsertOne(transactionCtx context.Context, colname string, d
 	return result.InsertedID, e
 }
 
-// UpdateMany - function to update many docs in the collection
-//		transactionCtx is only required for transactions, you can pass nil for normal usage
-func (client Client) UpdateMany(transactionCtx context.Context, colname string, filter interface{},
+// UpdateMany - function to update many docs in the collection, ctx can be nil
+func (client Client) UpdateMany(ctx context.Context, colname string, filter interface{},
 	update interface{}) (int64, error) {
 	// select collection
 	col := client.db.Collection(colname)
-
-	// set context
-	ctx, cancel := SetContext(transactionCtx, client.timeout)
-	defer cancel()
 
 	// update
 	result, e := col.UpdateMany(ctx, filter, update)
@@ -107,16 +92,11 @@ func (client Client) UpdateMany(transactionCtx context.Context, colname string, 
 	return result.ModifiedCount, e
 }
 
-// UpdateOne - function to update a single doc in the collection
-//		transactionCtx is only required for transactions, you can pass nil for normal usage
-func (client Client) UpdateOne(transactionCtx context.Context, colname string,
+// UpdateOne - function to update a single doc in the collection, ctx can be nil
+func (client Client) UpdateOne(ctx context.Context, colname string,
 	filter interface{}, update interface{}, opts *options.UpdateOptions) (int64, error) {
 	// select collection
 	col := client.db.Collection(colname)
-
-	// set context
-	ctx, cancel := SetContext(transactionCtx, client.timeout)
-	defer cancel()
 
 	// update
 	result, e := col.UpdateOne(ctx, filter, update, opts)
@@ -127,15 +107,10 @@ func (client Client) UpdateOne(transactionCtx context.Context, colname string,
 	return result.ModifiedCount, e
 }
 
-// DeleteMany - function to delete many docs in the collection
-//		transactionCtx is only required for transactions, you can pass nil for normal usage
-func (client Client) DeleteMany(transactionCtx context.Context, colname string, filter interface{}) (int64, error) {
+// DeleteMany - function to delete many docs in the collection, ctx can be nil
+func (client Client) DeleteMany(ctx context.Context, colname string, filter interface{}) (int64, error) {
 	// select collection
 	col := client.db.Collection(colname)
-
-	// set context
-	ctx, cancel := SetContext(transactionCtx, client.timeout)
-	defer cancel()
 
 	// delete
 	result, e := col.DeleteMany(ctx, filter)
@@ -146,15 +121,10 @@ func (client Client) DeleteMany(transactionCtx context.Context, colname string, 
 	return result.DeletedCount, e
 }
 
-// DeleteOne - function to delete a single doc in the collection
-//		transactionCtx is only required for transactions, you can pass nil for normal usage
-func (client Client) DeleteOne(transactionCtx context.Context, colname string, filter interface{}) (int64, error) {
+// DeleteOne - function to delete a single doc in the collection, ctx can be nil
+func (client Client) DeleteOne(ctx context.Context, colname string, filter interface{}) (int64, error) {
 	// select collection
 	col := client.db.Collection(colname)
-
-	// set context
-	ctx, cancel := SetContext(transactionCtx, client.timeout)
-	defer cancel()
 
 	// delete
 	result, e := col.DeleteOne(ctx, filter)
@@ -165,16 +135,11 @@ func (client Client) DeleteOne(transactionCtx context.Context, colname string, f
 	return result.DeletedCount, e
 }
 
-// ReplaceOne - function to replace a single doc in the collection
-//		transactionCtx is only required for transactions, you can pass nil for normal usage
-func (client Client) ReplaceOne(transactionCtx context.Context, colname string,
+// ReplaceOne - function to replace a single doc in the collection, ctx can be nil
+func (client Client) ReplaceOne(ctx context.Context, colname string,
 	filter interface{}, replace interface{}, opts *options.ReplaceOptions) (int64, error) {
 	// select collection
 	col := client.db.Collection(colname)
-
-	// set context
-	ctx, cancel := SetContext(transactionCtx, client.timeout)
-	defer cancel()
 
 	// replace
 	result, e := col.ReplaceOne(ctx, filter, replace, opts)

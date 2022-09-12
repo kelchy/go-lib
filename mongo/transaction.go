@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 	"go.mongodb.org/mongo-driver/mongo"
 	"github.com/kelchy/go-lib/common"
 )
@@ -42,7 +43,7 @@ import (
 */
 
 // Transaction - creates a transaction
-func (client Client) Transaction(actions []map[string]interface{}) (interface{}, error) {
+func (client Client) Transaction(actions []map[string]interface{}, timeout int) (interface{}, error) {
 	// validate operations first
 	for _, action := range actions {
 		if !common.SliceHasString(Operations, action["operation"].(string)) {
@@ -50,7 +51,7 @@ func (client Client) Transaction(actions []map[string]interface{}) (interface{},
 		}
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), client.timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout) * time.Second)
 	defer cancel()
 
 	sess, err := client.connection.StartSession()

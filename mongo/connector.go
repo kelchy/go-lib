@@ -4,7 +4,6 @@ import (
 	"context"
 	"net/url"
 	"strings"
-	"time"
 
 	"github.com/kelchy/go-lib/log"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -17,12 +16,11 @@ type Client struct {
 	uri		string
 	db		*mongo.Database
 	connection	*mongo.Client
-	timeout		time.Duration
 	log		log.Log
 }
 
 // New - constructor to initiate client instance
-func New(uri string, timeout int) (Client, error) {	
+func New(uri string) (Client, error) {	
         l, _ := log.New("")
 	var client Client
 	var e error
@@ -34,23 +32,16 @@ func New(uri string, timeout int) (Client, error) {
 	}
 	client.uri = uri
 	client.connection = conn
-	client.timeout = time.Duration(timeout) * time.Second
-	// set a context timer "ctxTimeout" to make sure we don't
-	// wait indefinitely for the connection to happen
-	ctx, cancel := context.WithTimeout(context.Background(), client.timeout)
-	defer cancel()
 
 	// attempt to connect
-	e = conn.Connect(ctx)
+	e = conn.Connect(context.Background())
 	if e != nil {
 		l.Error("MONGO_CONNECT", e)
 		return client, e
 	}
 
 	// after connecting and not seeing any error, attempt to ping
-	ctx, cancel = context.WithTimeout(context.Background(), client.timeout)
-	defer cancel()
-	e = conn.Ping(ctx, readpref.Primary())
+	e = conn.Ping(context.Background(), readpref.Primary())
 	if e != nil {
 		l.Error("MONGO_PING", e)
 		return client, e

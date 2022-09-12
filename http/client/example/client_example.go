@@ -2,26 +2,30 @@ package main
 
 import (
 	"fmt"
+	"time"
+	"context"
 	"encoding/json"
         "github.com/kelchy/go-lib/http/client"
 )
 
 func main() {
 	c, _ := client.New()
-	r := c.Get("https://www.google.com", nil, nil, 0)
+	c.SetJSON(false)
+	r := c.Get(nil, "https://www.google.com", nil, nil)
 	fmt.Println("SAMPLE HTML HEADER", r.Response)
-	html, _ := r.HTML()
-	fmt.Println("SAMPLE HTML FIRST 64 CHARS", html[:64])
+	fmt.Println("SAMPLE HTML FIRST 64 CHARS", r.HTML[:64])
 
 	// get json payload
-	j := c.Get("https://jsonplaceholder.typicode.com/todos/1", nil, nil, 0)
+	c.SetJSON(true)
+	j := c.Get(nil, "https://jsonplaceholder.typicode.com/todos/1", nil, nil)
 	fmt.Println("SAMPLE JSON HEADER", j.Response)
-	js, _ := j.JSON()
-	jsons, _ := json.Marshal(js)
+	jsons, _ := json.Marshal(j.JSON)
 	fmt.Println("SAMPLE JSON PAYLOAD", string(jsons))
 
 	// simulate a timeout, but we dont want to see the error stack
 	c.SetLogger("empty")
-	e := c.Get("https://www.google.com", nil, nil, 10)
+	ctx, cancel := context.WithTimeout(context.Background(), 10 * time.Millisecond)
+	defer cancel()
+	e := c.Get(ctx, "https://www.google.com", nil, nil)
 	fmt.Println("SAMPLE ERROR TIMEOUT", e.Error)
 }
