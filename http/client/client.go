@@ -20,6 +20,7 @@ type Client struct {
 	Client	*http.Client
 	timeout	int
 	log	log.Log
+	JSON	bool
 }
 
 // New - creates an returns http client
@@ -41,6 +42,7 @@ func New() (Client, error) {
 		return client, e
 	}
 	client.log = l
+	client.JSON = true
 	return client, nil
 }
 
@@ -82,33 +84,38 @@ func (c *Client) SetLogger(logtype string) {
 	}
 }
 
+// SetJSON - changes the default JSON true to false - HTML content
+func (c *Client) SetJSON(enabled bool) {
+	c.JSON = enabled
+}
+
 // Get - http call using get method, timeout in milli
-func (c Client) Get(url string, data []byte, hdr map[string]string, timeout int) Res {
-	return c.req("GET", url, data, hdr, timeout)
+func (c Client) Get(ctx context.Context, url string, data []byte, hdr map[string]string) Res {
+	return c.req(ctx, "GET", url, data, hdr)
 }
 
 // Post - http call using post method, timeout in milli
-func (c Client) Post(url string, data []byte, hdr map[string]string, timeout int) Res {
-	return c.req("POST", url, data, hdr, timeout)
+func (c Client) Post(ctx context.Context, url string, data []byte, hdr map[string]string) Res {
+	return c.req(ctx, "POST", url, data, hdr)
 }
 
 // Put - http call using put method, timeout in milli
-func (c Client) Put(url string, data []byte, hdr map[string]string, timeout int) Res {
-	return c.req("PUT", url, data, hdr, timeout)
+func (c Client) Put(ctx context.Context, url string, data []byte, hdr map[string]string) Res {
+	return c.req(ctx, "PUT", url, data, hdr)
 }
 
 // Delete - http call using delete method, timeout in milli
-func (c Client) Delete(url string, data []byte, hdr map[string]string, timeout int) Res {
-	return c.req("DELETE", url, data, hdr, timeout)
+func (c Client) Delete(ctx context.Context, url string, data []byte, hdr map[string]string) Res {
+	return c.req(ctx, "DELETE", url, data, hdr)
 }
 
-func (c Client) req(method string, url string, data []byte, hdr map[string]string, timeout int) Res {
-	timesec := c.timeout
-	if timeout != 0 {
-		timesec = timeout
+func (c Client) req(ctx context.Context, method string, url string, data []byte, hdr map[string]string) Res {
+	var cancel context.CancelFunc
+	if ctx == nil {
+		timesec := c.timeout
+		ctx, cancel = context.WithTimeout(context.Background(), time.Duration(timesec) * time.Millisecond)
+		defer cancel()
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timesec) * time.Millisecond)
-	defer cancel()
 
 	var res Res
 	res.log = c.log
@@ -132,5 +139,10 @@ func (c Client) req(method string, url string, data []byte, hdr map[string]strin
 		return res
 	}
 	res.Response = *resp
+	if c.JSON == true {
+		res.JSONparse()
+	} else {
+		res.HTMLparse()
+	}
 	return res
 }

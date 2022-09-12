@@ -13,26 +13,36 @@ type Res struct {
 	Response	http.Response
 	Error		error
 	log		log.Log
+	HTML		string
+	JSON		interface{}
 }
 
 // HTML - method to return the html content of response
-func (r Res) HTML() (string, error) {
+func (r *Res) HTMLparse() {
 	var data bytes.Buffer
 	if r.Error != nil {
-		return data.String(), r.Error
+		return
 	}
 	defer r.Response.Body.Close()
 	_, e := io.Copy(&data, r.Response.Body)
-	return data.String(), e
+	if e != nil {
+		r.Error = e
+		return
+	}
+	r.HTML = data.String()
 }
 
 // JSON - method to return the json content of response
-func (r Res) JSON() (interface{}, error) {
+func (r *Res) JSONparse() {
 	var data interface{}
 	if r.Error != nil {
-		return data, r.Error
+		return
 	}
 	defer r.Response.Body.Close()
 	e := json.NewDecoder(r.Response.Body).Decode(&data)
-	return data, e
+	if e != nil {
+		r.Error = e
+		return
+	}
+	r.JSON = data
 }
