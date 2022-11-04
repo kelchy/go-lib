@@ -12,7 +12,7 @@ import (
 func (client Client) Find(ctx context.Context, colname string, filter map[string]interface{},
 	opt map[string]interface{}) ([]bson.M, error) {
 	// select collection
-	col := client.db.Collection(colname)
+	col := client.Db.Collection(colname)
 
 	// handle options
 	opts := options.Find()
@@ -50,7 +50,7 @@ func (client Client) Find(ctx context.Context, colname string, filter map[string
 func (client Client) FindOne(ctx context.Context, colname string,
 	filter map[string]interface{}, opt map[string]interface{}) (*mongo.SingleResult, error) {
 	// select collection
-	col := client.db.Collection(colname)
+	col := client.Db.Collection(colname)
 
 	// handle options
 	opts := options.FindOne()
@@ -74,7 +74,7 @@ func (client Client) FindOne(ctx context.Context, colname string,
 // Aggregate - function to aggregate docs in collection, ctx can be nil
 func (client Client) Aggregate(ctx context.Context, colname string, pipeline []interface{}) ([]bson.M, error) {
 	// select collection
-	col := client.db.Collection(colname)
+	col := client.Db.Collection(colname)
 
 	var e error
 	var docs []bson.M

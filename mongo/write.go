@@ -11,7 +11,7 @@ import (
 func (client Client) InsertMany(ctx context.Context, colname string, docs []interface{}, ordered bool) (
 	int, []interface{}, error) {
 	// select collection
-	col := client.db.Collection(colname)
+	col := client.Db.Collection(colname)
 
 	// handle options
 	opts := options.InsertManyOptions{}
@@ -56,7 +56,7 @@ func (client Client) InsertMany(ctx context.Context, colname string, docs []inte
 // InsertOne - function to insert a single doc into collection, ctx can be nil
 func (client Client) InsertOne(ctx context.Context, colname string, doc interface{}) (interface{}, error) {
 	// select collection
-	col := client.db.Collection(colname)
+	col := client.Db.Collection(colname)
 
 	// insert
 	result, e := col.InsertOne(ctx, doc)
@@ -81,7 +81,7 @@ func (client Client) InsertOne(ctx context.Context, colname string, doc interfac
 func (client Client) UpdateMany(ctx context.Context, colname string, filter interface{},
 	update interface{}) (int64, error) {
 	// select collection
-	col := client.db.Collection(colname)
+	col := client.Db.Collection(colname)
 
 	// update
 	result, e := col.UpdateMany(ctx, filter, update)
@@ -96,7 +96,7 @@ func (client Client) UpdateMany(ctx context.Context, colname string, filter inte
 func (client Client) UpdateOne(ctx context.Context, colname string,
 	filter interface{}, update interface{}, opts *options.UpdateOptions) (int64, error) {
 	// select collection
-	col := client.db.Collection(colname)
+	col := client.Db.Collection(colname)
 
 	// update
 	result, e := col.UpdateOne(ctx, filter, update, opts)
@@ -110,7 +110,7 @@ func (client Client) UpdateOne(ctx context.Context, colname string,
 // DeleteMany - function to delete many docs in the collection, ctx can be nil
 func (client Client) DeleteMany(ctx context.Context, colname string, filter interface{}) (int64, error) {
 	// select collection
-	col := client.db.Collection(colname)
+	col := client.Db.Collection(colname)
 
 	// delete
 	result, e := col.DeleteMany(ctx, filter)
@@ -124,7 +124,7 @@ func (client Client) DeleteMany(ctx context.Context, colname string, filter inte
 // DeleteOne - function to delete a single doc in the collection, ctx can be nil
 func (client Client) DeleteOne(ctx context.Context, colname string, filter interface{}) (int64, error) {
 	// select collection
-	col := client.db.Collection(colname)
+	col := client.Db.Collection(colname)
 
 	// delete
 	result, e := col.DeleteOne(ctx, filter)
@@ -139,7 +139,7 @@ func (client Client) DeleteOne(ctx context.Context, colname string, filter inter
 func (client Client) ReplaceOne(ctx context.Context, colname string,
 	filter interface{}, replace interface{}, opts *options.ReplaceOptions) (int64, error) {
 	// select collection
-	col := client.db.Collection(colname)
+	col := client.Db.Collection(colname)
 
 	// replace
 	result, e := col.ReplaceOne(ctx, filter, replace, opts)

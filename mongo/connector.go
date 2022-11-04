@@ -13,7 +13,7 @@ import (
 
 // Client - instance initiated by constructor
 type Client struct {
-	Uri        string
+	URI        string
 	Db         *mongo.Database
 	Connection *mongo.Client
 	log        log.Log
@@ -30,7 +30,7 @@ func New(uri string) (Client, error) {
 		l.Error("MONGO_NEW", e)
 		return client, e
 	}
-	client.Uri = uri
+	client.URI = uri
 	client.Connection = conn
 
 	// attempt to connect
@@ -48,7 +48,7 @@ func New(uri string) (Client, error) {
 	}
 	// success, let's assign
 	// get db name from uri
-	db, e := uri2db(client.Uri)
+	db, e := uri2db(client.URI)
 	if e != nil {
 		l.Error("MONGO_URI2DB", e)
 		return client, e

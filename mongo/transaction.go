@@ -5,8 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"time"
-	"go.mongodb.org/mongo-driver/mongo"
+
 	"github.com/kelchy/go-lib/common"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 /*
@@ -51,10 +52,10 @@ func (client Client) Transaction(actions []map[string]interface{}, timeout int) 
 		}
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout) * time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
 	defer cancel()
 
-	sess, err := client.connection.StartSession()
+	sess, err := client.Connection.StartSession()
 	if err != nil {
 		client.log.Error("MONGO_TRANSACTION", err)
 		return nil, err
