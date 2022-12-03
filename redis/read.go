@@ -12,6 +12,9 @@ func (r Client) Get(ctx context.Context, key string) (string, error) {
 		r.log.Error("REDIS_GET", err)
 		return val, err
 	}
+	if err == redis.Nil {
+		return val, fmt.Errorf("KEY_NOT_FOUND")
+	}
 	return val, nil
 }
 
