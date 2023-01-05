@@ -1,0 +1,46 @@
+name: go-publish-common
+on:
+  push:
+    branches:
+      - common/*
+jobs:
+  go-publish:
+    name: go-publish-common
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 2
+    - name: Check file changes
+      uses: tj-actions/changed-files@v26
+      id: check
+      with:
+        files: |
+          common/go.mod
+    - name: Get version
+      if: steps.check.outputs.any_changed == 'true'
+      id: checkver
+      run: echo '::set-output name=version::'`head -n 1 common/go.mod | sed 's/\/\///'`
+    - name: Version update or file change detected
+      if: steps.check.outputs.any_changed == 'true'
+      uses: actions/setup-go@v3
+      with:
+        go-version: '^1.18.1'
+        cache: true
+
+    - name: Test
+      if: steps.check.outputs.any_changed == 'true'
+      run: make test-common
+
+    - name: Create a GitHub release
+      if: steps.check.outputs.any_changed == 'true'
+      uses: actions/create-release@v1
+      with:
+        tag_name: common/${{ steps.checkver.outputs.version }}
+        release_name: Release common/${{ steps.checkver.outputs.version }}
+        body: |
+          Release: common/${{ steps.checkver.outputs.version }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

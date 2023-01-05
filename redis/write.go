@@ -3,19 +3,20 @@ package redis
 import (
 	"time"
 	"errors"
+	"context"
 	redis "github.com/go-redis/redis/v8"
 )
 
 var lockPrefix = "lock_"
 
-// Lock - implementation of redis distributed lock
-func (r Client) Lock(key string, ttl time.Duration) (bool, error) {
+// Lock - implementation of redis distributed lock, ctx can be nil
+func (r Client) Lock(ctx context.Context, key string, ttl time.Duration) (bool, error) {
 	tmpkey := lockPrefix + key
 	args := redis.SetArgs{
 		TTL:	ttl,
 		Mode:	"NX",
 	}
-	s := r.Client.SetArgs(r.ctx, tmpkey, "", args)
+	s := r.Client.SetArgs(ctx, tmpkey, "", args)
 	res, err := s.Result()
 
 	// if key is locked, returns redis.Nil
@@ -34,10 +35,10 @@ func (r Client) Lock(key string, ttl time.Duration) (bool, error) {
 	return false, nil
 }
 
-// Unlock - implementation of redis distributed unlock
-func (r Client) Unlock(key string) (bool, error) {
+// Unlock - implementation of redis distributed unlock, ctx can be nil
+func (r Client) Unlock(ctx context.Context, key string) (bool, error) {
 	tmpkey := lockPrefix + key
-	res, err := r.Del(tmpkey)
+	res, err := r.Del(ctx, tmpkey)
 	if err != nil {
 		err = errors.New("Unlock: failed")
 		r.log.Error("REDIS_UNLOCK", err)
@@ -50,9 +51,9 @@ func (r Client) Unlock(key string) (bool, error) {
 	return resbool, err
 }
 
-// Set - implementation of redis SET
-func (r Client) Set(key string, value string, ttl time.Duration) (string, error) {
-	res, err := r.Client.Set(r.ctx, key, value, ttl).Result()
+// Set - implementation of redis SET, ctx can be nil
+func (r Client) Set(ctx context.Context, key string, value string, ttl time.Duration) (string, error) {
+	res, err := r.Client.Set(ctx, key, value, ttl).Result()
 	if err != nil {
 		r.log.Error("REDIS_SET", err)
 		return res, err
@@ -60,9 +61,9 @@ func (r Client) Set(key string, value string, ttl time.Duration) (string, error)
 	return res, nil
 }
 
-// SetNX - implementation of redis SET with NX flag
-func (r Client) SetNX(key string, value string, ttl time.Duration) (bool, error) {
-	res, err := r.Client.SetNX(r.ctx, key, value, ttl).Result()
+// SetNX - implementation of redis SET with NX flag, ctx can be nil
+func (r Client) SetNX(ctx context.Context, key string, value string, ttl time.Duration) (bool, error) {
+	res, err := r.Client.SetNX(ctx, key, value, ttl).Result()
 	if err != nil {
 		r.log.Error("REDIS_SETNX", err)
 		return res, err
@@ -70,9 +71,9 @@ func (r Client) SetNX(key string, value string, ttl time.Duration) (bool, error)
 	return res, nil
 }
 
-// Del - implementation of redis DEL
-func (r Client) Del(key string) (int64, error) {
-	res, err := r.Client.Del(r.ctx, key).Result()
+// Del - implementation of redis DEL, ctx can be nil
+func (r Client) Del(ctx context.Context, key string) (int64, error) {
+	res, err := r.Client.Del(ctx, key).Result()
 	if err != nil {
 		r.log.Error("REDIS_DEL", err)
 		return res, err
