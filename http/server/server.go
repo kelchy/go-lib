@@ -18,8 +18,8 @@ type ChiRouter = chi.Router
 // Router - initialized instance
 type Router struct {
 	Engine     *chi.Mux
-	log        log.Log
-	logRequest bool
+	log        *log.Log
+	logRequest *bool
 }
 
 // New - constructor function to initialize instance
@@ -29,8 +29,9 @@ func New(origins []string) (Router, error) {
 	if e != nil {
 		return rtr, e
 	}
-	rtr.log = l
-	rtr.logRequest = true
+	rtr.log = &l
+	rtr.logRequest = new(bool)
+	*rtr.logRequest = true
 
 	if len(origins) == 0 {
 		origins = []string{"http://localhost", "https://localhost"}
@@ -46,6 +47,7 @@ func New(origins []string) (Router, error) {
 	}))
 	rtr.Engine.Use(middleware.RealIP)
 	rtr.Engine.Use(rtr.catchall)
+	rtr.Engine.Use(rtr.logger)
 	return rtr, nil
 }
 
@@ -53,13 +55,13 @@ func New(origins []string) (Router, error) {
 func (rtr *Router) SetLogger(logtype string) {
 	l, e := log.New(logtype)
 	if e == nil {
-		rtr.log = l
+		*rtr.log = l
 	}
 }
 
 // SetLogRequest - changes behaviour on whether to log requests or not
 func (rtr *Router) SetLogRequest(lr bool) {
-	rtr.logRequest = lr
+	*rtr.logRequest = lr
 }
 
 // Run - run and listen for http
