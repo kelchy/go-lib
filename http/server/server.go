@@ -23,11 +23,12 @@ type Router struct {
 }
 
 // New - constructor function to initialize instance
-func New(origins []string) (Router, error) {
+func New(origins []string) (*Router, error) {
 	var rtr Router
+
 	l, e := log.New("")
 	if e != nil {
-		return rtr, e
+		return &rtr, e
 	}
 	rtr.log = l
 	rtr.logRequest = true
@@ -46,7 +47,7 @@ func New(origins []string) (Router, error) {
 	}))
 	rtr.Engine.Use(middleware.RealIP)
 	rtr.Engine.Use(rtr.catchall)
-	return rtr, nil
+	return &rtr, nil
 }
 
 // SetLogger - changes the logger mode

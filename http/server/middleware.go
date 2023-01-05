@@ -1,16 +1,17 @@
 package server
 
 import (
-	"time"
-	"errors"
-	"strconv"
 	"encoding/json"
-	"net/http"
+	"errors"
 	"fmt"
+	"net/http"
+	"strconv"
+	"time"
+
 	"github.com/urfave/negroni"
 )
 
-func (rtr Router) catchall(next http.Handler) http.Handler {
+func (rtr *Router) catchall(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		t1 := time.Now()
 		w2 := negroni.NewResponseWriter(w)
@@ -19,10 +20,10 @@ func (rtr Router) catchall(next http.Handler) http.Handler {
 		// it happens within another go routine created within
 		defer func() {
 			rc := recover()
-			diff := float64(time.Since(t1).Microseconds())/1000
+			diff := float64(time.Since(t1).Microseconds()) / 1000
 			diffStr := fmt.Sprintf("%f", diff)
 			if rc != nil {
-				rtr.log.Error("HTTPS_MW", errors.New("Uncaught Exception: " + rc.(error).Error()))
+				rtr.log.Error("HTTPS_MW", errors.New("Uncaught Exception: "+rc.(error).Error()))
 				// build generic 500 error
 				jsonBody, _ := json.Marshal(map[string]string{
 					"error": "There was an internal server error",
@@ -34,8 +35,8 @@ func (rtr Router) catchall(next http.Handler) http.Handler {
 				msg, _ := json.Marshal(map[string]string{
 					"method": r.Method,
 					"status": strconv.Itoa(w2.Status()),
-					"src": r.RemoteAddr,
-					"ms": diffStr,
+					"src":    r.RemoteAddr,
+					"ms":     diffStr,
 				})
 				rtr.log.Out(r.URL.Path, string(msg))
 			}
