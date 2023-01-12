@@ -23,7 +23,7 @@ type Router struct {
 }
 
 // New - constructor function to initialize instance
-func New(origins []string) (*Router, error) {
+func New(origins []string, headers []string) (*Router, error) {
 	var rtr Router
 
 	l, e := log.New("")
@@ -36,11 +36,17 @@ func New(origins []string) (*Router, error) {
 	if len(origins) == 0 {
 		origins = []string{"http://localhost", "https://localhost"}
 	}
+	allowedDefault := []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"}
+	if len(headers) == 0 {
+		headers = allowedDefault
+	} else {
+		headers = append(headers, allowedDefault...)
+	}
 	rtr.Engine = chi.NewRouter()
 	rtr.Engine.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   origins,
-		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE"},
-		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
+		AllowedMethods:   []string{ "GET", "POST", "PUT", "DELETE", "OPTIONS" },
+		AllowedHeaders:   headers,
 		ExposedHeaders:   []string{"Link"},
 		AllowCredentials: true,
 		MaxAge:           12 * 60 * 60,

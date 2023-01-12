@@ -1,4 +1,4 @@
-//v0.0.4
+//v0.1.0
 module github.com/kelchy/go-lib/http/server
 
 require (

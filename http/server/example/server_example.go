@@ -9,7 +9,7 @@ import (
 
 func main() {
 	// initialize with empty cors setting
-	rtr, _ := server.New([]string{"http://localhost:8080"})
+        rtr, _ := server.New([]string{"http://localhost:8080"}, []string{"X-CUSTOM-HEADER"})
 
 	// sample custom middleware
 	rtr.Engine.Use(func(next http.Handler) http.Handler {
