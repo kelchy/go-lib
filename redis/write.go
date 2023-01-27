@@ -9,7 +9,7 @@ import (
 
 var lockPrefix = "lock_"
 
-// Lock - implementation of redis distributed lock
+// Lock - implementation of redis distributed lock, ctx can be nil
 func (r Client) Lock(ctx context.Context, key string, ttl time.Duration) (bool, error) {
 	tmpkey := lockPrefix + key
 	args := redis.SetArgs{
@@ -35,7 +35,7 @@ func (r Client) Lock(ctx context.Context, key string, ttl time.Duration) (bool, 
 	return false, nil
 }
 
-// Unlock - implementation of redis distributed unlock
+// Unlock - implementation of redis distributed unlock, ctx can be nil
 func (r Client) Unlock(ctx context.Context, key string) (bool, error) {
 	tmpkey := lockPrefix + key
 	res, err := r.Del(ctx, tmpkey)
@@ -51,7 +51,7 @@ func (r Client) Unlock(ctx context.Context, key string) (bool, error) {
 	return resbool, err
 }
 
-// Set - implementation of redis SET
+// Set - implementation of redis SET, ctx can be nil
 func (r Client) Set(ctx context.Context, key string, value string, ttl time.Duration) (string, error) {
 	res, err := r.Client.Set(ctx, key, value, ttl).Result()
 	if err != nil {
@@ -61,7 +61,7 @@ func (r Client) Set(ctx context.Context, key string, value string, ttl time.Dura
 	return res, nil
 }
 
-// SetNX - implementation of redis SET with NX flag
+// SetNX - implementation of redis SET with NX flag, ctx can be nil
 func (r Client) SetNX(ctx context.Context, key string, value string, ttl time.Duration) (bool, error) {
 	res, err := r.Client.SetNX(ctx, key, value, ttl).Result()
 	if err != nil {
@@ -71,7 +71,7 @@ func (r Client) SetNX(ctx context.Context, key string, value string, ttl time.Du
 	return res, nil
 }
 
-// Del - implementation of redis DEL
+// Del - implementation of redis DEL, ctx can be nil
 func (r Client) Del(ctx context.Context, key string) (int64, error) {
 	res, err := r.Client.Del(ctx, key).Result()
 	if err != nil {

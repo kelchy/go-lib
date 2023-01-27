@@ -16,7 +16,7 @@ const (
 )
 
 func main() {
-	mongoClient, err := mongo.New(mongoURI, 10)
+	mongoClient, err := mongo.New(mongoURI)
 	if err!= nil {
 		fmt.Println("Error connecting to mongo: ", err)
 		return
@@ -197,7 +197,7 @@ func transactionExamples(mongoClient *mongo.Client) {
 		},
 	}
 
-	response, err := mongoClient.Transaction(actions)
+	response, err := mongoClient.Transaction(actions, 10)
 	fmt.Println(fmt.Sprintf("transaction. response: %+v err: %+v", response, err))
 
 	actions = append(actions, map[string]interface{}{
@@ -212,6 +212,6 @@ func transactionExamples(mongoClient *mongo.Client) {
 				},
 			},
 	})
-	response, err = mongoClient.Transaction(actions)
+	response, err = mongoClient.Transaction(actions, 10)
 	fmt.Println(fmt.Sprintf("transaction. response: %+v err: %+v", response, err))
 }

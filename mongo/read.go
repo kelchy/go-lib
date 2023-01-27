@@ -8,12 +8,11 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-// Find - function to find doc in collection
-//	transactionCtx is only required for transactions, you can pass nil for normal usage
-func (client Client) Find(transactionCtx context.Context, colname string, filter map[string]interface{},
+// Find - function to find doc in collection, ctx can be nil
+func (client Client) Find(ctx context.Context, colname string, filter map[string]interface{},
 	opt map[string]interface{}) ([]bson.M, error) {
 	// select collection
-	col := client.db.Collection(colname)
+	col := client.Db.Collection(colname)
 
 	// handle options
 	opts := options.Find()
@@ -29,10 +28,6 @@ func (client Client) Find(transactionCtx context.Context, colname string, filter
 
 	var e error
 	var docs []bson.M
-
-	// set context
-	ctx, cancel := SetContext(transactionCtx, client.timeout)
-	defer cancel()
 
 	// fetch cursor
 	cursor, e := col.Find(ctx, filter, opts)
@@ -51,12 +46,11 @@ func (client Client) Find(transactionCtx context.Context, colname string, filter
 	return docs, e
 }
 
-// FindOne - function to find first encountered doc in collection
-//	transactionCtx is only required for transactions, you can pass nil for normal usage
-func (client Client) FindOne(transactionCtx context.Context, colname string,
+// FindOne - function to find first encountered doc in collection, ctx can be nil
+func (client Client) FindOne(ctx context.Context, colname string,
 	filter map[string]interface{}, opt map[string]interface{}) (*mongo.SingleResult, error) {
 	// select collection
-	col := client.db.Collection(colname)
+	col := client.Db.Collection(colname)
 
 	// handle options
 	opts := options.FindOne()
@@ -66,10 +60,6 @@ func (client Client) FindOne(transactionCtx context.Context, colname string,
 	if opt["sort"] != nil && opt["order"] != nil {
 		opts.SetSort(bson.D{{opt["sort"].(string), opt["order"].(int64)}})
 	}
-
-	// set context
-	ctx, cancel := SetContext(transactionCtx, client.timeout)
-	defer cancel()
 
 	// fetch doc
 	doc := col.FindOne(ctx, filter, opts)
@@ -81,18 +71,13 @@ func (client Client) FindOne(transactionCtx context.Context, colname string,
 	return doc, nil
 }
 
-// Aggregate - function to aggregate docs in collection
-//		transactionCtx is only required for transactions, you can pass nil for normal usage
-func (client Client) Aggregate(transactionCtx context.Context, colname string, pipeline []interface{}) ([]bson.M, error) {
+// Aggregate - function to aggregate docs in collection, ctx can be nil
+func (client Client) Aggregate(ctx context.Context, colname string, pipeline []interface{}) ([]bson.M, error) {
 	// select collection
-	col := client.db.Collection(colname)
+	col := client.Db.Collection(colname)
 
 	var e error
 	var docs []bson.M
-
-	// set context
-	ctx, cancel := SetContext(transactionCtx, client.timeout)
-	defer cancel()
 
 	// fetch cursor
 	cursor, e := col.Aggregate(ctx, pipeline)
