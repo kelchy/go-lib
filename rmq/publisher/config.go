@@ -8,7 +8,8 @@ import (
 	"github.com/streadway/amqp"
 )
 
-type PublisherConfig struct {
+// Config is the configuration for publisher.
+type Config struct {
 	// Name: name of the publisher queue.
 	Name string `json:"name" mapstructure:"name"`
 	// Exchange: exchange to publish to.
@@ -27,8 +28,9 @@ type PublisherConfig struct {
 	NoWait bool `json:"no_wait" mapstructure:"no_wait"`
 }
 
-func DefaultPublisherConfig(name string, exchange string) PublisherConfig {
-	return PublisherConfig{
+// DefaultConfig is the default configuration for publisher.
+func DefaultConfig(name string, exchange string) Config {
+	return Config{
 		Name:                  name,
 		Exchange:              exchange,
 		Mandatory:             false,
@@ -40,6 +42,7 @@ func DefaultPublisherConfig(name string, exchange string) PublisherConfig {
 	}
 }
 
+// ConnectionConfig is the configuration for connection.
 type ConnectionConfig struct {
 	// ConnURIs: list of connection URIs.
 	ConnURIs []string `json:"conn_uris" mapstructure:"conn_uris"`
@@ -49,6 +52,7 @@ type ConnectionConfig struct {
 	ReconnectMaxAttempt int `json:"reconnect_max_attempt" mapstructure:"reconnect_max_attempt"`
 }
 
+// DefaultConnectionConfig is the default configuration for connection.
 func DefaultConnectionConfig(connURIs []string) ConnectionConfig {
 	return ConnectionConfig{
 		ConnURIs:            connURIs,
@@ -57,6 +61,7 @@ func DefaultConnectionConfig(connURIs []string) ConnectionConfig {
 	}
 }
 
+// DefaultPublishMessage is the function to publish a default message.
 func DefaultPublishMessage(message []byte) amqp.Publishing {
 	return amqp.Publishing{
 		ContentType:  "application/json",
@@ -66,6 +71,7 @@ func DefaultPublishMessage(message []byte) amqp.Publishing {
 	}
 }
 
+// DefaultLogger is the default logger for the package
 func DefaultLogger() ILogger {
 	logger, err := log.New("standard")
 	if err != nil {

@@ -4,8 +4,9 @@ import (
 	"github.com/streadway/amqp"
 )
 
+// IConnectionPool interface
 type IConnectionPool interface {
-	GetCon() (*amqp.Connection, error)
+	getCon() (*amqp.Connection, error)
 }
 
 type connectionPool struct {
@@ -31,7 +32,7 @@ func (connPool *connectionPool) nextURI() (uri string) {
 	return
 }
 
-func (connPool *connectionPool) GetCon() (*amqp.Connection, error) {
+func (connPool *connectionPool) getCon() (*amqp.Connection, error) {
 	var err error
 	uri := connPool.nextURI()
 	con, err := amqp.Dial(uri)

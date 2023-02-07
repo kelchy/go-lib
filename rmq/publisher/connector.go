@@ -8,9 +8,10 @@ import (
 	"github.com/streadway/amqp"
 )
 
+// Publisher is the publisher struct
 type Publisher struct {
 	pubChan      *amqp.Channel
-	pubConfig    PublisherConfig
+	pubConfig    Config
 	conn         *amqp.Connection
 	connPool     IConnectionPool
 	errorConn    chan *amqp.Error
@@ -18,6 +19,7 @@ type Publisher struct {
 	logger       ILogger
 }
 
+// ILogger is the interface for logger
 type ILogger interface {
 	Debug(key string, message string)
 	Out(key string, message string)
@@ -25,7 +27,7 @@ type ILogger interface {
 }
 
 // New creates a new publisher
-func New(connConfig ConnectionConfig, pubConfig PublisherConfig, logger ILogger) (*Publisher, error) {
+func New(connConfig ConnectionConfig, pubConfig Config, logger ILogger) (*Publisher, error) {
 	publisher := Publisher{
 		logger:    logger,
 		pubConfig: pubConfig,
