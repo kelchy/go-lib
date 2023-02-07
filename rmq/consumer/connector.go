@@ -8,9 +8,10 @@ import (
 	"github.com/streadway/amqp"
 )
 
+// Consumer is the struct that contains the consumer configuration
 type Consumer struct {
 	consumerChan       *amqp.Channel
-	consumerConfig     ConsumerConfig
+	consumerConfig     Config
 	queueConfig        QueueConfig
 	queueBindConfig    QueueBindConfig
 	messageRetryConfig MessageRetryConfig
@@ -22,13 +23,15 @@ type Consumer struct {
 	logger             ILogger
 }
 
+// ILogger is the interface for the logger required by the package
 type ILogger interface {
 	Debug(key string, message string)
 	Out(key string, message string)
 	Error(key string, err error)
 }
 
-func New(connConfig ConnectionConfig, queueConfig QueueConfig, queueBindConfig QueueBindConfig, consumerConfig ConsumerConfig, msgRetryConfig MessageRetryConfig, processor IClientHandler, logger ILogger) error {
+// New creates a new consumer
+func New(connConfig ConnectionConfig, queueConfig QueueConfig, queueBindConfig QueueBindConfig, consumerConfig Config, msgRetryConfig MessageRetryConfig, processor IClientHandler, logger ILogger) error {
 	// Set up connection to RabbitMQ
 	c := Consumer{
 		queueConfig:        queueConfig,
@@ -84,7 +87,7 @@ func (c *Consumer) connect(connConfig ConnectionConfig) error {
 	for attempts <= connConfig.ReconnectMaxAttempt {
 		c.logger.Out("RMQ-CONSUMER", "Connecting to RabbitMQ")
 		// Make a connection to RMQ
-		conn, err := c.connPool.GetCon()
+		conn, err := c.connPool.getCon()
 		if err != nil {
 			c.logger.Error("ERR_RMQ-CONSUMER_FAIL-CONNECT", err)
 			time.Sleep(connConfig.ReconnectInterval)

@@ -7,6 +7,7 @@ import (
 	"github.com/kelchy/go-lib/log"
 )
 
+// ConnectionConfig is the configuration for connection creation.
 type ConnectionConfig struct {
 	// ConnURIs: list of connection URIs.
 	ConnURIs []string `json:"conn_uris" mapstructure:"conn_uris"`
@@ -16,6 +17,7 @@ type ConnectionConfig struct {
 	ReconnectMaxAttempt int `json:"reconnect_max_attempt" mapstructure:"reconnect_max_attempt"`
 }
 
+// DefaultConnectionConfig returns a default connection configuration.
 func DefaultConnectionConfig(connURIs []string) ConnectionConfig {
 	return ConnectionConfig{
 		ConnURIs:            connURIs,
@@ -24,7 +26,8 @@ func DefaultConnectionConfig(connURIs []string) ConnectionConfig {
 	}
 }
 
-type ConsumerConfig struct {
+// Config is the configuration for consumer creation.
+type Config struct {
 	Enabled   bool                   `json:"enabled" mapstructure:"enabled"`
 	Name      string                 `json:"name" mapstructure:"name"`
 	AutoAck   bool                   `json:"auto_ack" mapstructure:"auto_ack"`
@@ -40,8 +43,9 @@ type ConsumerConfig struct {
 	Global          bool `json:"global" mapstructure:"global"`
 }
 
-func DefaultConsumerConfig(name string) ConsumerConfig {
-	return ConsumerConfig{
+// DefaultConfig returns a default consumer configuration.
+func DefaultConfig(name string) Config {
+	return Config{
 		Enabled:         true,
 		Name:            name,
 		AutoAck:         true,
@@ -56,6 +60,7 @@ func DefaultConsumerConfig(name string) ConsumerConfig {
 	}
 }
 
+// QueueConfig is the configuration for queue creation.
 type QueueConfig struct {
 	Name string `json:"name" mapstructure:"name"`
 	// Durable: if true, the queue will survive broker restarts.
@@ -82,6 +87,7 @@ func DefaultQueueConfig(name string) QueueConfig {
 	}
 }
 
+// QueueBindConfig is the configuration for queue binding to an exchange with a routing key.
 type QueueBindConfig struct {
 	Queue    string `json:"queue" mapstructure:"queue"`
 	Exchange string `json:"exchange" mapstructure:"exchange"`
@@ -91,6 +97,7 @@ type QueueBindConfig struct {
 	Args       map[string]interface{} `json:"args" mapstructure:"args"`
 }
 
+// DefaultQueueBindConfig returns a default queue binding configuration.
 func DefaultQueueBindConfig(exchange string, queue string, bindingKey string) QueueBindConfig {
 	return QueueBindConfig{
 		Queue:      queue,
@@ -101,6 +108,7 @@ func DefaultQueueBindConfig(exchange string, queue string, bindingKey string) Qu
 	}
 }
 
+// DefaultLogger generates a logger to be used with the consumer.
 func DefaultLogger() ILogger {
 	logger, err := log.New("standard")
 	if err != nil {
@@ -109,6 +117,7 @@ func DefaultLogger() ILogger {
 	return logger
 }
 
+// MessageRetryConfig is the configuration for message retry.
 type MessageRetryConfig struct {
 	// retry
 	Enabled           bool `json:"enabled" mapstructure:"enabled"`
@@ -116,6 +125,7 @@ type MessageRetryConfig struct {
 	RetryCountLimit   int  `json:"retry_count_limit" mapstructure:"retry_count_limit"`
 }
 
+// DefaultMessageRetryConfig returns a default message retry configuration.
 func DefaultMessageRetryConfig() MessageRetryConfig {
 	return MessageRetryConfig{
 		Enabled:           true,

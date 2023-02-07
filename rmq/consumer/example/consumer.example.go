@@ -10,13 +10,13 @@ import (
 )
 
 func main() {
-	eventProcessor := &EventProcessor{}
+	eventProcessor := &eventProcessor{}
 	err := consumer.New(
 		consumer.DefaultConnectionConfig([]string{os.Getenv("RMQ_URI")}),
 		// Queue names should be the same in QueueConfig and QueueBindConfig
 		consumer.DefaultQueueConfig("test-queue-logging"),
 		consumer.DefaultQueueBindConfig("test-exchange", "test-queue-logging", "test-routing-key"),
-		consumer.DefaultConsumerConfig("test-consumer"),
+		consumer.DefaultConfig("test-consumer"),
 		consumer.DefaultMessageRetryConfig(),
 		eventProcessor,
 		consumer.DefaultLogger())
@@ -28,14 +28,15 @@ func main() {
 	time.Sleep(30 * time.Second)
 }
 
-type EventProcessor struct{}
+// EventProcessor is an example of a consumer event processor.
+type eventProcessor struct{}
 
-func (*EventProcessor) ProcessEvent(ctx context.Context, message consumer.IMessage) error {
+func (*eventProcessor) ProcessEvent(ctx context.Context, message consumer.IMessage) error {
 	fmt.Printf("Recieved message: ID: %s, Message: %s\n", message.GetID(), string(message.Body()))
 	return nil
 }
 
-func (*EventProcessor) ProcessDeadMessage(ctx context.Context, message consumer.IMessage, err error) error {
+func (*eventProcessor) ProcessDeadMessage(ctx context.Context, message consumer.IMessage, err error) error {
 	fmt.Printf("Recieved dead message: ID: %s, Message: %s, Error: %v", message.GetID(), string(message.Body()), err)
 	return nil
 }

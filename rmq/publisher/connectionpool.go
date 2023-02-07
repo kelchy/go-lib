@@ -4,6 +4,7 @@ import (
 	"github.com/streadway/amqp"
 )
 
+// IConnectionPool is the interface for connection pool
 type IConnectionPool interface {
 	GetCon() (*amqp.Connection, error)
 }

@@ -24,7 +24,7 @@ func main() {
 		// Queue names should be the same in QueueConfig and QueueBindConfig
 		consumer.DefaultQueueConfig("test-queue-logging"),
 		consumer.DefaultQueueBindConfig("test-exchange", "test-queue-logging", "test-routing-key"),
-		consumer.DefaultConsumerConfig("test-consumer"),
+		consumer.DefaultConfig("test-consumer"),
 		consumer.DefaultMessageRetryConfig(),
 		eventProcessor,
 		consumer.DefaultLogger())

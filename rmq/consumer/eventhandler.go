@@ -7,23 +7,27 @@ import (
 	"github.com/streadway/amqp"
 )
 
+// IEventHandler interface contains methods implemented by the package
 type IEventHandler interface {
 	HandleEvent(context.Context, IMessage)
 	Retry(context.Context, IMessage, error)
 	HandleDeadMessage(context.Context, IMessage, error)
 }
 
+// IClientHandler interface contains methods to be implemented by the user of the package
 type IClientHandler interface {
 	ProcessEvent(context.Context, IMessage) error
 	ProcessDeadMessage(context.Context, IMessage, error) error
 }
 
+// EventHandler struct
 type EventHandler struct {
 	processor   IClientHandler
 	logger      ILogger
 	retryConfig *MessageRetryConfig
 }
 
+// NewEventHandler returns a new EventHandler
 func NewEventHandler(processor IClientHandler, logger ILogger, retryConfig *MessageRetryConfig) IEventHandler {
 	return &EventHandler{
 		processor:   processor,
@@ -32,6 +36,7 @@ func NewEventHandler(processor IClientHandler, logger ILogger, retryConfig *Mess
 	}
 }
 
+// HandleEvent handles the event received from the queue
 func (e *EventHandler) HandleEvent(ctx context.Context, message IMessage) {
 	err := e.processor.ProcessEvent(ctx, message)
 	if err != nil {
@@ -44,10 +49,11 @@ func (e *EventHandler) HandleEvent(ctx context.Context, message IMessage) {
 	}
 }
 
+// Retry retries the message if the retry config is enabled
 func (e *EventHandler) Retry(ctx context.Context, message IMessage, err error) {
 	headers := message.Headers()
 	if headers == nil { // in case of 1st retry no headers are present
-		errAck := message.Ack(false, WithRequeue(false))
+		errAck := message.Ack(false, withRequeue(false))
 		if errAck != nil {
 			e.logger.Error(fmt.Sprintf("ERR_EVENT_HANDLER-FAIL-MSG-ACK-%s", message.GetID()), errAck)
 		}
@@ -58,7 +64,7 @@ func (e *EventHandler) Retry(ctx context.Context, message IMessage, err error) {
 			table, _ := content.(amqp.Table)
 			retryCount, _ := table["count"].(int64)
 			if int(retryCount) <= e.retryConfig.RetryCountLimit {
-				errAck := message.Ack(false, WithRequeue(false))
+				errAck := message.Ack(false, withRequeue(false))
 				if errAck != nil {
 					e.logger.Error(fmt.Sprintf("ERR_EVENT_HANDLER-FAIL-MSG-ACK-%s", message.GetID()), errAck)
 					return
@@ -71,6 +77,7 @@ func (e *EventHandler) Retry(ctx context.Context, message IMessage, err error) {
 	e.HandleDeadMessage(ctx, message, err)
 }
 
+// HandleDeadMessage handles the dead message
 func (e *EventHandler) HandleDeadMessage(ctx context.Context, message IMessage, err error) {
 	if e.retryConfig.HandleDeadMessage {
 		handleDMErr := e.processor.ProcessDeadMessage(ctx, message, err)

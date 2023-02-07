@@ -20,7 +20,7 @@ func main() {
 	// If using the default publisher config, you can just pass your publisher name and exchange name
 	p, err := publisher.New(
 		publisher.DefaultConnectionConfig([]string{os.Getenv("RMQ_URI")}),
-		publisher.DefaultPublisherConfig("test-publisher", "test-exchange"),
+		publisher.DefaultConfig("test-publisher", "test-exchange"),
 		publisher.DefaultLogger())
 	if err != nil {
 		// Publisher failed to create and connect
