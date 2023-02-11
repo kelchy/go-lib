@@ -1,0 +1,46 @@
+name: go-publish-rmq-publisher
+on:
+  push:
+    branches:
+      - rmq/publisher/*
+jobs:
+  go-publish:
+    name: go-publish-rmq-publisher
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 2
+    - name: Check file changes
+      uses: tj-actions/changed-files@v26
+      id: check
+      with:
+        files: |
+          rmq/publisher/go.mod
+    - name: Get version
+      if: steps.check.outputs.any_changed == 'true'
+      id: checkver
+      run: echo '::set-output name=version::'`head -n 1 rmq/publisher/go.mod | sed 's/\/\///'`
+    - name: Version update or file change detected
+      if: steps.check.outputs.any_changed == 'true'
+      uses: actions/setup-go@v3
+      with:
+        go-version: '^1.18.1'
+        cache: true
+
+    - name: Test
+      if: steps.check.outputs.any_changed == 'true'
+      run: make test-rmq SUB=publisher
+
+    - name: Create a GitHub release
+      if: steps.check.outputs.any_changed == 'true'
+      uses: actions/create-release@v1
+      with:
+        tag_name: rmq/publisher/${{ steps.checkver.outputs.version }}
+        release_name: Release rmq/publisher/${{ steps.checkver.outputs.version }}
+        body: |
+          Release: rmq/publisher/${{ steps.checkver.outputs.version }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
