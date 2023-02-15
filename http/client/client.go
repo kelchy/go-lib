@@ -104,6 +104,11 @@ func (c Client) Put(ctx context.Context, url string, data []byte, hdr map[string
 	return c.req(ctx, "PUT", url, data, hdr)
 }
 
+// Patch - http call using patch method, timeout in milli
+func (c Client) Patch(ctx context.Context, url string, data []byte, hdr map[string]string) Res {
+	return c.req(ctx, "PATCH", url, data, hdr)
+}
+
 // Delete - http call using delete method, timeout in milli
 func (c Client) Delete(ctx context.Context, url string, data []byte, hdr map[string]string) Res {
 	return c.req(ctx, "DELETE", url, data, hdr)
