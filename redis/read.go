@@ -5,7 +5,7 @@ import (
 	redis "github.com/go-redis/redis/v8"
 )
 
-// Get - implementation of redis GET
+// Get - implementation of redis GET, ctx can be nil
 func (r Client) Get(ctx context.Context, key string) (string, error) {
 	val, err := r.Client.Get(ctx, key).Result()
 	if err != nil && err != redis.Nil {
@@ -15,7 +15,7 @@ func (r Client) Get(ctx context.Context, key string) (string, error) {
 	return val, nil
 }
 
-// Keys - implementation of redis KEYS
+// Keys - implementation of redis KEYS, ctx can be nil
 func (r Client) Keys(ctx context.Context, match string) ([]string, error) {
 	var list []string
 	var cursor uint64

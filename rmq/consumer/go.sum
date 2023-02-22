@@ -1,0 +1,4 @@
+github.com/kelchy/go-lib/log v0.0.10 h1:K2ilS1c3pHwzXuQhKbTYagiNPYJYaGJq6BHr8TjPM2g=
+github.com/kelchy/go-lib/log v0.0.10/go.mod h1:08sbkvkTs1hFLUcHsOqCUXJBAF1VUrllqKkB3lmDEFM=
+github.com/streadway/amqp v1.0.0 h1:kuuDrUJFZL1QYL9hUNuCxNObNzB0bV/ZG5jV3RWAQgo=
+github.com/streadway/amqp v1.0.0/go.mod h1:AZpEONHx3DKn8O/DFsRAY58/XVQiIPMTMB1SddzLXVw=

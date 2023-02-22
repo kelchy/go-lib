@@ -39,7 +39,7 @@ func (client Client) FSset(filename string) (int, error) {
 	var e error
 
 	// initialize bucket
-	bucket, e := gridfs.NewBucket(client.db)
+	bucket, e := gridfs.NewBucket(client.Db)
 	if e != nil {
 		client.log.Error("MONGO_FSSET_NEW", e)
 		return -1, e
@@ -75,7 +75,7 @@ func (client Client) FSget(filename string) (io.ReadSeeker, error) {
 	var e error
 
 	// initialize bucket
-	bucket, e := gridfs.NewBucket(client.db)
+	bucket, e := gridfs.NewBucket(client.Db)
 	if e != nil {
 		client.log.Error("MONGO_FSGET_NEW", e)
 		return rs, e
