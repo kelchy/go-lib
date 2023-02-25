@@ -46,6 +46,9 @@ func (l Log) Out(scope string, msg string) {
 
 // Debug - outputs debugging to stdout
 func (l Log) Debug(scope string, msg string) {
+	if os.Getenv("GO_ENV") == "production" {
+		return
+	}
 	if l.config != "empty" {
 		logPrint(scope, msg, l.json)
 	}
