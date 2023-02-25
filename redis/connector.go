@@ -3,10 +3,12 @@ package redis
 import (
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"errors"
-
 	redis "github.com/go-redis/redis/v8"
 	"github.com/kelchy/go-lib/log"
+	"io/ioutil"
+	"strings"
 )
 
 // KeepTTL - helper to expose KeepTTL
@@ -28,6 +30,22 @@ func New(uri string) (Client, error) {
 		l.Error("REDIS_PARSE_URL", err)
 		return r, err
 	}
+
+	// hack for redis labs CA issue
+	if strings.Contains(uri, "rediss") && strings.Contains(opt.Addr, "redislabs.com") {
+		// Load CA cert
+		caCert, err := ioutil.ReadFile("./redis_ca.pem")
+		if err != nil {
+			l.Error("REDIS_CA_READ", err)
+		}
+		caCertPool := x509.NewCertPool()
+		caCertPool.AppendCertsFromPEM(caCert)
+		opt.TLSConfig = &tls.Config{
+			MinVersion: tls.VersionTLS12,
+			RootCAs:      caCertPool,
+		}
+	}
+
 	r.Client = redis.NewClient(opt)
 	r.ctx = context.Background()
 	r.log = l
