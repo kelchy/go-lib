@@ -1,6 +1,6 @@
 package redis
 
-// hack for redis labs CA issue
+// CACert - hack for redis labs CA issue
 var CACert = `-----BEGIN CERTIFICATE-----
 MIIDTzCCAjegAwIBAgIJAKSVpiDswLcwMA0GCSqGSIb3DQEBBQUAMD4xFjAUBgNV
 BAoMDUdhcmFudGlhIERhdGExJDAiBgNVBAMMG1NTTCBDZXJ0aWZpY2F0aW9uIEF1
