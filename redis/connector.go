@@ -7,7 +7,6 @@ import (
 	"errors"
 	redis "github.com/go-redis/redis/v8"
 	"github.com/kelchy/go-lib/log"
-	"io/ioutil"
 	"strings"
 )
 
@@ -33,13 +32,8 @@ func New(uri string) (Client, error) {
 
 	// hack for redis labs CA issue
 	if strings.Contains(uri, "rediss") && strings.Contains(opt.Addr, "redislabs.com") {
-		// Load CA cert
-		caCert, err := ioutil.ReadFile("./redis_ca.pem")
-		if err != nil {
-			l.Error("REDIS_CA_READ", err)
-		}
 		caCertPool := x509.NewCertPool()
-		caCertPool.AppendCertsFromPEM(caCert)
+		caCertPool.AppendCertsFromPEM([]byte(CACert))
 		opt.TLSConfig = &tls.Config{
 			MinVersion: tls.VersionTLS12,
 			RootCAs:      caCertPool,
