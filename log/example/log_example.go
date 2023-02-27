@@ -11,6 +11,7 @@ func main() {
 		panic(err)
 	}
 	log.Out("Example: scope", "message")
+	log.Debug("Example: scope", "you should not see this if GO_ENV is production")
 
 	empty, _ := Log.New("empty")
 	empty.Out("Empty: You should", "not see this")
