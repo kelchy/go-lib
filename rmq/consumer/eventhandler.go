@@ -40,6 +40,7 @@ func NewEventHandler(processor IClientHandler, logger ILogger, retryConfig *Mess
 func (e *EventHandler) HandleEvent(ctx context.Context, message IMessage) {
 	err := e.processor.ProcessEvent(ctx, message)
 	if err != nil {
+		// Attempts to retry the message if the retry is enabled
 		if e.retryConfig.Enabled {
 			e.Retry(ctx, message, err)
 			return
@@ -53,7 +54,7 @@ func (e *EventHandler) HandleEvent(ctx context.Context, message IMessage) {
 func (e *EventHandler) Retry(ctx context.Context, message IMessage, err error) {
 	headers := message.Headers()
 	if headers == nil { // in case of 1st retry no headers are present
-		errAck := message.Ack(false, withRequeue(false))
+		errAck := message.Nack(false, false)
 		if errAck != nil {
 			e.logger.Error(fmt.Sprintf("ERR_EVENT_HANDLER-FAIL-MSG-ACK-%s", message.GetID()), errAck)
 		}
@@ -63,8 +64,8 @@ func (e *EventHandler) Retry(ctx context.Context, message IMessage, err error) {
 		for _, content := range xDeathContent {
 			table, _ := content.(amqp.Table)
 			retryCount, _ := table["count"].(int64)
-			if int(retryCount) <= e.retryConfig.RetryCountLimit {
-				errAck := message.Ack(false, withRequeue(false))
+			if int(retryCount) < e.retryConfig.RetryCountLimit {
+				errAck := message.Nack(false, false)
 				if errAck != nil {
 					e.logger.Error(fmt.Sprintf("ERR_EVENT_HANDLER-FAIL-MSG-ACK-%s", message.GetID()), errAck)
 					return
@@ -72,6 +73,8 @@ func (e *EventHandler) Retry(ctx context.Context, message IMessage, err error) {
 				return
 			}
 			e.HandleDeadMessage(ctx, message, fmt.Errorf("retry count %d exceeded for msg %s", int(retryCount), message.GetID()))
+			// Golint flags this return but it is needed
+			return
 		}
 	}
 	e.HandleDeadMessage(ctx, message, err)

@@ -14,7 +14,7 @@ type Res struct {
 	Error		error
 	log		log.Log
 	HTML		string
-	JSON		interface{}
+	JSON		json.RawMessage
 }
 
 // HTMLparse - method to return the html content of response
@@ -34,7 +34,7 @@ func (r *Res) HTMLparse() {
 
 // JSONparse - method to return the json content of response
 func (r *Res) JSONparse() {
-	var data interface{}
+	var data json.RawMessage
 	if r.Error != nil {
 		return
 	}

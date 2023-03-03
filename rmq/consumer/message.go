@@ -7,7 +7,9 @@ import (
 // IMessage interface contains methods implemented by the package
 type IMessage interface {
 	GetID() string
-	Ack(flag bool, opts ...option) error
+	Ack(multiple bool) error
+	Nack(multiple bool, requeue bool) error
+	Reject(requeue bool) error
 	Headers() map[string]interface{}
 	Body() []byte
 }
@@ -30,22 +32,16 @@ func (m *Message) GetID() string {
 }
 
 // Ack acknowledges the message
-func (m *Message) Ack(flag bool, opts ...option) error {
-	options := newOptions(opts...)
-	multiple, _ := options.Context.Value(multipleKey{}).(bool)
-	requeue, _ := options.Context.Value(requeueKey{}).(bool)
-	if flag {
-		err := m.delivery.Ack(multiple)
-		if err != nil {
-			return err
-		}
-	} else {
-		err := m.delivery.Reject(requeue)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
+func (m *Message) Ack(multiple bool) error {
+	return m.delivery.Ack(multiple)
+}
+
+func (m *Message) Nack(multiple bool, requeue bool) error {
+	return m.delivery.Nack(multiple, requeue)
+}
+
+func (m *Message) Reject(requeue bool) error {
+	return m.delivery.Reject(requeue)
 }
 
 // Body returns the message body

@@ -32,15 +32,27 @@ func (rtr *Router) catchall(next http.Handler) http.Handler {
 				w.WriteHeader(http.StatusInternalServerError)
 				w.Write(jsonBody)
 			} else if rtr.logRequest {
-				msg, _ := json.Marshal(map[string]string{
-					"method": r.Method,
-					"status": strconv.Itoa(w2.Status()),
-					"src":    r.RemoteAddr,
-					"ms":     diffStr,
-				})
-				rtr.log.Out(r.URL.Path, string(msg))
+				if !contains(rtr.logSkipPath, r.URL.Path) {
+					msg, _ := json.Marshal(map[string]string{
+						"method": r.Method,
+						"status": strconv.Itoa(w2.Status()),
+						"src":    r.RemoteAddr,
+						"ms":     diffStr,
+					})
+					rtr.log.Out(r.URL.Path, string(msg))
+				}
 			}
 		}()
 		next.ServeHTTP(w2, r)
 	})
+}
+
+func contains(s []string, str string) bool {
+	for _, v := range s {
+		if v == str {
+			return true
+		}
+	}
+
+	return false
 }

@@ -8,7 +8,8 @@ Functionlity Supported:
 | -----------   | ----------- |
 | Publisher     | ✅ |
 | Consumer      | ✅ |
-| Dead Letter Queue   | [WIP] Currently Untested |
+| Dead Letter Queue   | ✅ |
+| Immediate & Mandatory Options | ❌ |
 
 ## Quickstart
 Refer to the respective publisher and consumer packages for how to use the library
