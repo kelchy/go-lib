@@ -36,10 +36,12 @@ func (m *Message) Ack(multiple bool) error {
 	return m.delivery.Ack(multiple)
 }
 
+// Nack nacks the message with the option to Nack multiple messages
 func (m *Message) Nack(multiple bool, requeue bool) error {
 	return m.delivery.Nack(multiple, requeue)
 }
 
+// Reject rejects the message
 func (m *Message) Reject(requeue bool) error {
 	return m.delivery.Reject(requeue)
 }
