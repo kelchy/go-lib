@@ -152,7 +152,7 @@ func (client Client) ReplaceOne(ctx context.Context, colname string,
 }
 
 // BulkWrite - function to write on multiple documents
-// ctx can be nil, opts is operations to execute on the collection
+// ctx can be nil, models are an array of operations to execute on the collection, opts is optional (allow to be not provided without breaking function in Go)
 func (client Client) BulkWrite(ctx context.Context, collname string, models []mongo.WriteModel, opts ...*options.BulkWriteOptions) (mongo.BulkWriteResult, error) {
 
 	// select the collection
@@ -161,7 +161,8 @@ func (client Client) BulkWrite(ctx context.Context, collname string, models []mo
 	result, err := coll.BulkWrite(ctx, models, opts...)
 	if err != nil {
 		client.log.Error("MONGO_BULKWRITE", err)
-		return mongo.BulkWriteResult{}, err // return nil struct for err
+		return mongo.BulkWriteResult{}, err
+		// we dont return an int as operations performed information is useful (i.e. modified count, upsert count, etc, upserted IDs)
 	}
 
 	return *result, nil
