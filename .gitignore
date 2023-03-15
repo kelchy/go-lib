@@ -17,6 +17,7 @@ env
 pkg
 bin
 
-# ignore more stuff
+# ignore more files that are usually related to a developer's system info
+# .DS_Store - macOS folder information; .idea - IntelliJ (jetbrains IDEs) settings
 .DS_Store
 .idea
