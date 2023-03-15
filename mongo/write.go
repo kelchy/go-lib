@@ -94,7 +94,8 @@ func (client Client) UpdateMany(ctx context.Context, colname string, filter inte
 }
 
 // UpdateOne - function to update a single doc in the collection, ctx can be nil
-func (client Client) UpdateOne(ctx context.Context, colname string, filter interface{}, update interface{}, opts *options.UpdateOptions) (int64, error) {
+func (client Client) UpdateOne(ctx context.Context, colname string,
+	filter interface{}, update interface{}, opts *options.UpdateOptions) (int64, error) {
 	// select collection
 	col := client.Db.Collection(colname)
 
