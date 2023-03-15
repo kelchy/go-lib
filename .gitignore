@@ -16,3 +16,7 @@
 env
 pkg
 bin
+
+# ignore more stuff
+.DS_Store
+.idea
