@@ -1,7 +1,6 @@
 SHELL := /bin/bash
 
 .PHONY:
-
 # this will install binary in ${GOPATH}
 $(GOPATH)/bin/golint:
 	go install golang.org/x/lint/golint@v0.0.0-20201208152925-83fdc39ff7b5

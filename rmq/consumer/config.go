@@ -7,6 +7,13 @@ import (
 	"github.com/kelchy/go-lib/log"
 )
 
+// Default constants for initialising default configs
+const defaultReconnectInterval = 5 * time.Second
+const defaultReconnectMaxAttempt = 3
+const defaultPrefetchCount = 1
+const defaultPrefetchSize = 0
+const defaultRetryCountLimit = 2
+
 // ConnectionConfig is the configuration for connection creation.
 type ConnectionConfig struct {
 	// ConnURIs: list of connection URIs.
@@ -21,8 +28,8 @@ type ConnectionConfig struct {
 func DefaultConnectionConfig(connURIs []string) ConnectionConfig {
 	return ConnectionConfig{
 		ConnURIs:            connURIs,
-		ReconnectInterval:   5 * time.Second,
-		ReconnectMaxAttempt: 3,
+		ReconnectInterval:   defaultReconnectInterval,
+		ReconnectMaxAttempt: defaultReconnectMaxAttempt,
 	}
 }
 
@@ -54,9 +61,33 @@ func DefaultConfig(name string) Config {
 		NoWait:          false,
 		Args:            nil,
 		EnabledPrefetch: true,
-		PrefetchCount:   1,
-		PrefetchSize:    0,
+		PrefetchCount:   defaultPrefetchCount,
+		PrefetchSize:    defaultPrefetchSize,
 		Global:          false,
+	}
+}
+
+// ExchangeConfig is the configuration for exchange creation.
+type ExchangeConfig struct {
+	Name       string `json:"name" mapstructure:"name"`
+	Kind       string `json:"kind" mapstructure:"kind"`
+	Durable    bool   `json:"durable" mapstructure:"durable"`
+	AutoDelete bool   `json:"auto_delete" mapstructure:"auto_delete"`
+	Internal   bool   `json:"internal" mapstructure:"internal"`
+	NoWait     bool   `json:"no_wait" mapstructure:"no_wait"`
+	Args       map[string]interface{}
+}
+
+// DefaultExchangeConfig returns a default exchange configuration.
+func DefaultExchangeConfig(name string, kind string) ExchangeConfig {
+	return ExchangeConfig{
+		Name:       name,
+		Kind:       kind,
+		Durable:    true,
+		AutoDelete: false,
+		Internal:   false,
+		NoWait:     false,
+		Args:       nil,
 	}
 }
 
@@ -130,6 +161,6 @@ func DefaultMessageRetryConfig() MessageRetryConfig {
 	return MessageRetryConfig{
 		Enabled:           true,
 		HandleDeadMessage: true,
-		RetryCountLimit:   2,
+		RetryCountLimit:   defaultRetryCountLimit,
 	}
 }

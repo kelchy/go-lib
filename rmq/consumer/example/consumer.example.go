@@ -24,6 +24,27 @@ func main() {
 		fmt.Println("failed to create consumer: ", err)
 	}
 
+	// If you want to verify the presence of queue and exchanges
+	// Not required if consumer is init using New() as above
+	conn, _ := consumer.NewConnection(consumer.DefaultConnectionConfig([]string{os.Getenv("RMQ_URI")}), consumer.DefaultLogger())
+	connChan, _ := conn.Channel()
+	exDeclareErr := consumer.NewExchange(connChan, consumer.DefaultExchangeConfig("test-exchange", "direct"))
+	_, queueDeclareErr := consumer.NewQueue(connChan, consumer.QueueConfig{
+		Name:       "test-queue-logging",
+		Durable:    true,
+		AutoDelete: true,
+		Exclusive:  false,
+		NoWait:     false,
+		Args:       nil,
+	})
+	if exDeclareErr != nil {
+		fmt.Println("failed to declare exchange: ", exDeclareErr)
+		return
+	}
+	if queueDeclareErr != nil {
+		fmt.Println("failed to declare queue: ", queueDeclareErr)
+		return
+	}
 	// Leave the consumer running for 30 seconds before exiting, only for example purposes
 	time.Sleep(30 * time.Second)
 }

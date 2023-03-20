@@ -30,7 +30,7 @@ type ILogger interface {
 	Error(key string, err error)
 }
 
-// New creates a new consumer
+// New creates a new consumer, should use this by default
 func New(connConfig ConnectionConfig, queueConfig QueueConfig, queueBindConfig QueueBindConfig, consumerConfig Config, msgRetryConfig MessageRetryConfig, processor IClientHandler, logger ILogger) error {
 	// Set up connection to RabbitMQ
 	c := Consumer{
@@ -80,6 +80,35 @@ func New(connConfig ConnectionConfig, queueConfig QueueConfig, queueBindConfig Q
 	}(msgs)
 	c.logger.Out("RMQ-CONSUMER", fmt.Sprintf("Consumer %s is listening on queue %s", c.consumerConfig.Name, conQueue.Name))
 	return nil
+}
+
+// NewConnection creates a new connection to RabbitMQ. For use when you want to initialize queues and exchanges or verify that they are present
+func NewConnection(connConfig ConnectionConfig, logger ILogger) (*amqp.Connection, error) {
+	attempts := 0
+	for attempts <= connConfig.ReconnectMaxAttempt {
+		logger.Out("RMQ-CONSUMER", "Connecting to RabbitMQ")
+		// Make a connection to RMQ
+		conn, err := amqp.Dial(connConfig.ConnURIs[0])
+		if err != nil {
+			logger.Error("ERR_RMQ-CONSUMER_FAIL-CONNECT", err)
+			time.Sleep(connConfig.ReconnectInterval)
+			// Wait before retrying
+			continue
+		}
+		logger.Out("RMQ-CONSUMER", "Connected to RabbitMQ")
+		return conn, nil
+	}
+	return nil, fmt.Errorf("failed to connect to RabbitMQ after %d attempts", connConfig.ReconnectMaxAttempt)
+}
+
+// OpenChannel opens a new channel on the connection
+func OpenChannel(conn *amqp.Connection, logger ILogger) (*amqp.Channel, error) {
+	amqpchan, err := conn.Channel()
+	if err != nil {
+		logger.Error("ERR_RMQ-CONSUMER_FAIL-OPEN-CHANNEL", err)
+		return nil, err
+	}
+	return amqpchan, nil
 }
 
 func (c *Consumer) connect(connConfig ConnectionConfig) error {
