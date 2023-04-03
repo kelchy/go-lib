@@ -9,7 +9,7 @@ func NewQueue(amqpChannel *amqp.Channel, queueConfig QueueConfig) (amqp.Queue, e
 }
 
 // NewQueueBind binds a queue to an exchange with a routing key
-func NewQueueBind(amqpChannel *amqp.Channel, exchange string, queue, string, routingKey string, noWait bool, args amqp.Table) error {
+func NewQueueBind(amqpChannel *amqp.Channel, exchange string, queue string, routingKey string, noWait bool, args amqp.Table) error {
 	queueBindErr := amqpChannel.QueueBind(queue, routingKey, exchange, false, nil)
 	return queueBindErr
 }

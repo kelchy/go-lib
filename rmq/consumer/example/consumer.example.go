@@ -37,6 +37,7 @@ func main() {
 		NoWait:     false,
 		Args:       nil,
 	})
+	qBindErr := consumer.NewQueueBind(connChan, "test-exchange", "test-queue-logging", "test-routing-key", false, nil)
 	if exDeclareErr != nil {
 		fmt.Println("failed to declare exchange: ", exDeclareErr)
 		return
@@ -45,6 +46,11 @@ func main() {
 		fmt.Println("failed to declare queue: ", queueDeclareErr)
 		return
 	}
+	if qBindErr != nil {
+		fmt.Println("failed to bind queue: ", qBindErr)
+		return
+	}
+	fmt.Println("queue and exchange verified")
 	// Leave the consumer running for 30 seconds before exiting, only for example purposes
 	time.Sleep(30 * time.Second)
 }
