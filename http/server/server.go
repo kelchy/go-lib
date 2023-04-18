@@ -17,9 +17,10 @@ type ChiRouter = chi.Router
 
 // Router - initialized instance
 type Router struct {
-	Engine     *chi.Mux
-	log        log.Log
-	logRequest bool
+	Engine			*chi.Mux
+	log			log.Log
+	logRequest		bool
+	logSkipPath		[]string
 }
 
 // New - constructor function to initialize instance
@@ -32,6 +33,10 @@ func New(origins []string, headers []string) (*Router, error) {
 	}
 	rtr.log = l
 	rtr.logRequest = true
+
+	// by default middleware don't log root path which is
+	// usually used by health checks
+	rtr.logSkipPath = []string{"/"}
 
 	if len(origins) == 0 {
 		origins = []string{"http://localhost", "https://localhost"}
@@ -62,6 +67,11 @@ func (rtr *Router) SetLogger(logtype string) {
 	if e == nil {
 		rtr.log = l
 	}
+}
+
+// SetLogSkipPath - changes the middleware logging behaviour
+func (rtr *Router) SetLogSkipPath(list []string) {
+	rtr.logSkipPath = list
 }
 
 // SetLogRequest - changes behaviour on whether to log requests or not
