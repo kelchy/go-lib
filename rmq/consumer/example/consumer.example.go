@@ -1,69 +1,189 @@
 package main
 
 import (
-	"context"
 	"fmt"
+	"log"
 	"os"
-	"time"
+	"os/signal"
+	"syscall"
 
-	"github.com/kelchy/go-lib/rmq/consumer"
+	rabbitmq "github.com/kelchy/go-lib/rmq/consumer"
 )
 
 func main() {
-	eventProcessor := &eventProcessor{}
-	err := consumer.New(
-		consumer.DefaultConnectionConfig([]string{os.Getenv("RMQ_URI")}),
-		// Queue names should be the same in QueueConfig and QueueBindConfig
-		consumer.DefaultQueueConfig("test-queue-logging"),
-		consumer.DefaultQueueBindConfig("test-exchange", "test-queue-logging", "test-routing-key"),
-		consumer.DefaultConfig("test-consumer"),
-		consumer.DefaultMessageRetryConfig(),
-		eventProcessor,
-		consumer.DefaultLogger())
+	conn, err := rabbitmq.NewConn(
+		os.Getenv("RMQ_URI"),
+		rabbitmq.WithConnectionOptionsLogging,
+	)
 	if err != nil {
-		fmt.Println("failed to create consumer: ", err)
+		fmt.Println(err)
+		return
+	}
+	defer conn.Close()
+
+	// Verify that exchange exists (Not needed if it is declared in NewConsumer)
+	if err := rabbitmq.DeclareExchange(
+		conn,
+		rabbitmq.ExchangeOptions{
+			Name:       "events",
+			Kind:       "direct",
+			Declare:    true,
+			Durable:    true,
+			AutoDelete: false,
+			Internal:   false,
+			NoWait:     false,
+			Args:       nil,
+		},
+	); err != nil {
+		fmt.Println(err)
+		return
 	}
 
-	// If you want to verify the presence of queue and exchanges
-	// Not required if consumer is init using New() as above
-	conn, _ := consumer.NewConnection(consumer.DefaultConnectionConfig([]string{os.Getenv("RMQ_URI")}), consumer.DefaultLogger())
-	connChan, _ := conn.Channel()
-	exDeclareErr := consumer.NewExchange(connChan, consumer.DefaultExchangeConfig("test-exchange", "direct"))
-	_, queueDeclareErr := consumer.NewQueue(connChan, consumer.QueueConfig{
-		Name:       "test-queue-logging",
-		Durable:    true,
-		AutoDelete: true,
-		Exclusive:  false,
-		NoWait:     false,
-		Args:       nil,
-	})
-	qBindErr := consumer.NewQueueBind(connChan, "test-exchange", "test-queue-logging", "test-routing-key", false, nil)
-	if exDeclareErr != nil {
-		fmt.Println("failed to declare exchange: ", exDeclareErr)
+	// Verify that queue exists (Not needed if it is declared in NewConsumer)
+	if err := rabbitmq.DeclareQueue(
+		conn,
+		rabbitmq.QueueOptions{
+			Name:       "my_queue",
+			Declare:    true,
+			Durable:    true,
+			AutoDelete: false,
+			Exclusive:  false,
+			NoWait:     false,
+			Args: map[string]interface{}{
+				"x-dead-letter-exchange":    "events",
+				"x-dead-letter-routing-key": "test_routing_key_dlk",
+			},
+		},
+	); err != nil {
+		fmt.Println(err)
 		return
 	}
-	if queueDeclareErr != nil {
-		fmt.Println("failed to declare queue: ", queueDeclareErr)
+
+	// Verify that queue is bound to exchange (Not needed binding is declared in NewConsumer)
+	if err := rabbitmq.DeclareBinding(
+		conn,
+		rabbitmq.BindingDeclareOptions{
+			QueueName:    "my_queue",
+			ExchangeName: "events",
+			RoutingKey:   "test_routing_key",
+			NoWait:       false,
+			Args:         nil,
+			Declare:      true,
+		}); err != nil {
+		fmt.Println(err)
 		return
 	}
-	if qBindErr != nil {
-		fmt.Println("failed to bind queue: ", qBindErr)
+
+	if err := rabbitmq.DeclareQueue(
+		conn,
+		rabbitmq.QueueOptions{
+			Name:       "my_queue_dlx",
+			Declare:    true,
+			Durable:    true,
+			AutoDelete: false,
+			Exclusive:  false,
+			NoWait:     false,
+			Args: map[string]interface{}{
+				"x-dead-letter-exchange":    "events",
+				"x-dead-letter-routing-key": "test_routing_key",
+				"x-message-ttl":             10000,
+			},
+		},
+	); err != nil {
+		fmt.Println(err)
 		return
 	}
-	fmt.Println("queue and exchange verified")
-	// Leave the consumer running for 30 seconds before exiting, only for example purposes
-	time.Sleep(30 * time.Second)
+
+	// Verify that queue is bound to exchange (Not needed binding is declared in NewConsumer)
+	if err := rabbitmq.DeclareBinding(
+		conn,
+		rabbitmq.BindingDeclareOptions{
+			QueueName:    "my_queue_dlx",
+			ExchangeName: "events",
+			RoutingKey:   "test_routing_key_dlk",
+			NoWait:       false,
+			Args:         nil,
+			Declare:      true,
+		}); err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	consumer, err := rabbitmq.NewConsumer(
+		conn,
+		eventHandler,
+		deadMessageHandler,
+		"my_queue",
+		rabbitmq.WithConsumerOptionsConcurrency(2),
+		rabbitmq.WithConsumerOptionsRoutingKey("test_routing_key"),
+		rabbitmq.WithConsumerOptionsExchangeName("events"),
+		rabbitmq.WithConsumerOptionsQueueArgs(map[string]interface{}{
+			"x-dead-letter-exchange":    "events",
+			"x-dead-letter-routing-key": "test_routing_key_dlk",
+		}),
+		rabbitmq.WithConsumerOptionsConsumerRetryLimit(3),
+		rabbitmq.WithConsumerOptionsConsumerDlxRetry,
+		rabbitmq.WithConsumerOptionsQueueDurable,
+	)
+	if err != nil {
+		fmt.Println(err)
+	}
+	defer consumer.Close()
+
+	consumer2, err := rabbitmq.NewConsumer(
+		conn,
+		eventHandler,
+		deadMessageHandler,
+		"my_queue",
+		rabbitmq.WithConsumerOptionsConcurrency(2),
+		rabbitmq.WithConsumerOptionsRoutingKey("test_routing_key"),
+		rabbitmq.WithConsumerOptionsExchangeName("events"),
+		rabbitmq.WithConsumerOptionsQueueArgs(map[string]interface{}{
+			"x-dead-letter-exchange":    "events",
+			"x-dead-letter-routing-key": "test_routing_key_dlk",
+		}),
+		rabbitmq.WithConsumerOptionsConsumerRetryLimit(3),
+		rabbitmq.WithConsumerOptionsConsumerDlxRetry,
+		rabbitmq.WithConsumerOptionsQueueDurable,
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer consumer2.Close()
+
+	// block main thread - wait for shutdown signal
+	sigs := make(chan os.Signal, 1)
+	done := make(chan bool, 1)
+
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		sig := <-sigs
+		fmt.Println()
+		fmt.Println(sig)
+		done <- true
+	}()
+
+	fmt.Println("awaiting signal")
+	<-done
+	fmt.Println("stopping consumer")
 }
 
-// EventProcessor is an example of a consumer event processor.
-type eventProcessor struct{}
-
-func (*eventProcessor) ProcessEvent(ctx context.Context, message consumer.IMessage) error {
-	fmt.Printf("Recieved message: ID: %s, Message: %s\n", message.GetID(), string(message.Body()))
+func eventHandler(d rabbitmq.Delivery) error {
+	fmt.Printf("consumed: %s, %v \n", string(d.MessageId), string(d.Body))
+	return fmt.Errorf("TEST_ERR")
+	err := d.Ack(false)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
-func (*eventProcessor) ProcessDeadMessage(ctx context.Context, message consumer.IMessage, err error) error {
-	fmt.Printf("Recieved dead message: ID: %s, Message: %s, Error: %v", message.GetID(), string(message.Body()), err)
+func deadMessageHandler(d rabbitmq.Delivery) error {
+	fmt.Printf("Dead Message Received: %s, %v \n", string(d.MessageId), string(d.Body))
+	err := d.Ack(false)
+	if err != nil {
+		return err
+	}
 	return nil
 }
