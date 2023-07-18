@@ -3,22 +3,23 @@ package main
 import (
 	"context"
 	"fmt"
-	"time"
-
 	"github.com/kelchy/go-lib/redis"
+	"os"
+	"time"
 )
 
 func main() {
 
-	uri := "<redis uri here>"
+	uri := os.Getenv("REDIS_URI")
 
 	// path to cert files
-	clientCertPath := "<file-path>"
-	clientKeyPath := `<file-path>`
+//	clientCertPath := "<file-path>"
+//	clientKeyPath := `<file-path>`
 
 	// use redis.New if TLS connection is not required
 	// skipVerifyCondition should only be true when running locally
-	redisclient, e := redis.NewSecure(uri, clientCertPath, clientKeyPath, false)
+//	redisclient, e := redis.NewSecure(uri, clientCertPath, clientKeyPath, false)
+	redisclient, e := redis.New(uri)
 	if e != nil {
 		fmt.Println(e)
 		return
