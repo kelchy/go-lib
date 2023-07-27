@@ -2,7 +2,7 @@ SHELL := /bin/bash
 
 .PHONY:
 
-DIR = log redis
+DIR = log redis http
 
 test-%:
 	$(MAKE) GOPATH=$${PWD} test -C $* SUB=${SUB}
