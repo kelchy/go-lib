@@ -1,6 +1,7 @@
 package rabbitmq
 
 import (
+	"github.com/kelchy/go-lib/log"
 	"github.com/kelchy/go-lib/rmq/consumer/internal/channelmanager"
 	"github.com/kelchy/go-lib/rmq/consumer/internal/logger"
 )
@@ -96,7 +97,8 @@ func DeclareExchange(
 	options ExchangeOptions,
 ) error {
 	// Creates a new channel manager
-	chanManager, err := channelmanager.NewChannelManager(conn.connectionManager, logger.DefaultLogger, conn.connectionManager.ReconnectInterval)
+	errLogger, _ := log.New("erroronly")
+	chanManager, err := channelmanager.NewChannelManager(conn.connectionManager, errLogger, conn.connectionManager.ReconnectInterval)
 	if err != nil {
 		return err
 	}
@@ -111,7 +113,8 @@ func DeclareQueue(
 	options QueueOptions,
 ) error {
 	// Creates a new channel manager
-	chanManager, err := channelmanager.NewChannelManager(conn.connectionManager, logger.DefaultLogger, conn.connectionManager.ReconnectInterval)
+	errLogger, _ := log.New("erroronly")
+	chanManager, err := channelmanager.NewChannelManager(conn.connectionManager, errLogger, conn.connectionManager.ReconnectInterval)
 	if err != nil {
 		return err
 	}

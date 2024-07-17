@@ -6,7 +6,6 @@ import (
 	"sync"
 
 	"github.com/kelchy/go-lib/rmq/consumer/internal/channelmanager"
-
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
@@ -230,7 +229,17 @@ func handlerGoroutine(consumer *Consumer, msgs <-chan amqp.Delivery, consumeOpti
 
 		// Attempt to handle message, Ack should be performed by user in handler, we only handle error cases.
 		if err := handler(Delivery{msg}); err != nil {
-			consumer.options.Logger.Error("ERR_CONSUMER_HANDLER", fmt.Errorf("error in handler: %v", err))
+			var routingKey string
+			if xDeathContent, ok := msg.Headers["x-death"].([]interface{}); ok {
+				table, _ := xDeathContent[len(xDeathContent)-1].(amqp.Table)
+				routingKey = table["routing-keys"].([]interface{})[0].(string)
+			}
+
+			if routingKey == "" {
+				routingKey = msg.RoutingKey
+			}
+
+			consumer.options.Logger.Error("ERR_CONSUMER_HANDLER", fmt.Errorf("messageID:%s, first routing key: %s, error in handler: %v", msg.MessageId, routingKey, err))
 			// Two options here, requeue directly into queue or requeue via dead letter exchange
 			if consumeOptions.RabbitConsumerOptions.DlxRetry {
 				err := msg.Nack(false, false)

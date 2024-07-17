@@ -2,7 +2,6 @@ package rabbitmq
 
 import (
 	"github.com/kelchy/go-lib/rmq/consumer/internal/logger"
-
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 

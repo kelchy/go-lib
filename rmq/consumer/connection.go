@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/kelchy/go-lib/rmq/consumer/internal/connectionmanager"
-
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
