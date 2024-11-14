@@ -7,7 +7,6 @@ import (
 	"os"
 	"strings"
 	"testing"
-
 )
 
 func TestErrorLog(t *testing.T) {
@@ -66,7 +65,7 @@ func TestErrorLog(t *testing.T) {
 			}()
 
 			log, _ := NewExtended("standard")
-			log.ErrorLog(tt.scope, tt.contextData, tt.errorMsg, tt.data, tt.message)
+			log.Error(tt.scope, tt.contextData, tt.errorMsg, tt.data, tt.message)
 
 			_ = w.Close()
 			<-done
@@ -134,7 +133,7 @@ func TestInfoLog(t *testing.T) {
 			}()
 
 			log, _ := NewExtended("standard")
-			log.InfoLog(tt.scope, tt.contextData, tt.data, tt.message)
+			log.Info(tt.scope, tt.contextData, tt.data, tt.message)
 
 			_ = w.Close()
 			os.Stdout = oldStdout
@@ -203,7 +202,7 @@ func TestSuccessLog(t *testing.T) {
 			}()
 
 			log, _ := NewExtended("standard")
-			log.SuccessLog(tt.scope, tt.contextData, tt.data, tt.message)
+			log.Success(tt.scope, tt.contextData, tt.data, tt.message)
 
 			_ = w.Close()
 			os.Stdout = oldStdout
@@ -272,7 +271,7 @@ func TestDebugLog(t *testing.T) {
 			}()
 
 			log, _ := NewExtended("standard")
-			log.DebugLog(tt.scope, tt.contextData, tt.data, tt.message)
+			log.Debug(tt.scope, tt.contextData, tt.data, tt.message)
 
 			_ = w.Close()
 			os.Stdout = oldStdout
