@@ -31,7 +31,7 @@ func main() {
 	contextData := Log.ContextData{TraceID: "trace123", UserID: "external456", Tenant: "tenantABC"}
 	logger.Info("scope", contextData, "some data", "a message")
 	logger.Error("scope", contextData, errors.New("an error occurred"), "some data", "a message")
-	logger.Success("scope", contextData, "some data", "a message")
+	logger.Out("scope", contextData, "some data", "a message")
 	logger.Debug("scope", contextData, "some data", "a message")
 
 }

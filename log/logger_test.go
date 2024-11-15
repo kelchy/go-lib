@@ -148,7 +148,7 @@ func TestInfoLog(t *testing.T) {
 
 }
 
-func TestSuccessLog(t *testing.T) {
+func TestOutLog(t *testing.T) {
 	tests := []struct {
 		scope       string
 		traceID     string
@@ -202,7 +202,7 @@ func TestSuccessLog(t *testing.T) {
 			}()
 
 			log, _ := NewExtended("standard")
-			log.Success(tt.scope, tt.contextData, tt.data, tt.message)
+			log.Out(tt.scope, tt.contextData, tt.data, tt.message)
 
 			_ = w.Close()
 			os.Stdout = oldStdout

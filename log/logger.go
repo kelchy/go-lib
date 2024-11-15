@@ -39,8 +39,8 @@ func (l ExtendedLog) Info(scope string, ctx ContextData, data interface{}, messa
 	l.Log.Out(fmt.Sprintf("info:%s", scope), GetLogMessage(ctx.TraceID, ctx.Tenant, ctx.UserID, data, message))
 }
 
-// Success logs a success message
-func (l ExtendedLog) Success(scope string, ctx ContextData, data interface{}, message string) {
+// Out logs a success/ok message
+func (l ExtendedLog) Out(scope string, ctx ContextData, data interface{}, message string) {
 	l.Log.Out(fmt.Sprintf("ok:%s", scope), GetLogMessage(ctx.TraceID, ctx.Tenant, ctx.UserID, data, message))
 }
 
