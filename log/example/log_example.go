@@ -7,7 +7,7 @@ import (
 )
 
 func main() {
-	log, err := Log.New("standard")	// or empty string
+	log, err := Log.New("standard") // or empty string
 	if err != nil {
 		panic(err)
 	}
@@ -29,9 +29,9 @@ func main() {
 
 	logger, _ := Log.NewExtended("standard")
 	contextData := Log.ContextData{TraceID: "trace123", UserID: "external456", Tenant: "tenantABC"}
-	logger.InfoLog("scope", contextData, "some data", "a message")
-	logger.ErrorLog("scope", contextData, errors.New("an error occurred"), "some data", "a message")
-	logger.SuccessLog("scope", contextData, "some data", "a message")
-	logger.DebugLog("scope", contextData, "some data", "a message")
+	logger.Info("scope", contextData, "some data", "a message")
+	logger.Error("scope", contextData, errors.New("an error occurred"), "some data", "a message")
+	logger.Out("scope", contextData, "some data", "a message")
+	logger.Debug("scope", contextData, "some data", "a message")
 
 }
