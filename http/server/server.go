@@ -23,8 +23,25 @@ type Router struct {
 	logSkipPath		[]string
 }
 
-// New - constructor function to initialize instance
+// CorsOptions takes in the options for CORS
+type CorsOptions struct {
+	Origins           []string
+	Headers           []string
+	AllowedOriginFunc func(r *http.Request, origin string) bool
+}
+
+// New - constructor function to initialize an instance
 func New(origins []string, headers []string) (*Router, error) {
+	corsOptions := &CorsOptions{
+		Origins:           origins,
+		Headers:           headers,
+	}
+
+	return NewWithCorsOptions(corsOptions)
+}
+
+// NewWithCorsOptions - constructor function to initialize with cors options
+func NewWithCorsOptions(corsOptions *CorsOptions) (*Router, error) {
 	var rtr Router
 
 	l, e := log.New("")
@@ -37,11 +54,12 @@ func New(origins []string, headers []string) (*Router, error) {
 	// by default middleware don't log root path which is
 	// usually used by health checks
 	rtr.logSkipPath = []string{"/"}
-
+	origins := corsOptions.Origins
 	if len(origins) == 0 {
 		origins = []string{"http://localhost", "https://localhost"}
 	}
 	allowedDefault := []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"}
+	headers := corsOptions.Headers
 	if len(headers) == 0 {
 		headers = allowedDefault
 	} else {
@@ -49,6 +67,7 @@ func New(origins []string, headers []string) (*Router, error) {
 	}
 	rtr.Engine = chi.NewRouter()
 	rtr.Engine.Use(cors.Handler(cors.Options{
+		AllowOriginFunc:  corsOptions.AllowedOriginFunc,
 		AllowedOrigins:   origins,
 		AllowedMethods:   []string{ "GET", "POST", "PUT", "DELETE", "OPTIONS" },
 		AllowedHeaders:   headers,
