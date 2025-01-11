@@ -1,10 +1,11 @@
 package server
 
 import (
-	"github.com/kelchy/go-lib/log"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/kelchy/go-lib/log"
 )
 
 func TestNew(t *testing.T) {
@@ -72,6 +73,61 @@ func TestNew(t *testing.T) {
 
 	// Test case with default origins and empty headers
 	router, err = New([]string{}, nil)
+	if err != nil {
+		t.Fatalf("Error creating router: %v", err)
+	}
+	if router == nil {
+		t.Fatal("Router is nil")
+	}
+}
+
+func TestNewWithCorsOptions(t *testing.T) {
+	// Test case with empty origins and headers and nil AllowedOriginFunc
+	corsOptions := &CorsOptions{
+		Origins:           nil,
+		Headers:           nil,
+		AllowedOriginFunc: nil,
+	}
+	router, err := NewWithCorsOptions(corsOptions)
+	if err != nil {
+		t.Fatalf("Error creating router: %v", err)
+	}
+	if router == nil {
+		t.Fatal("Router is nil")
+	}
+	// Test case with empty origins and headers and nil AllowedOriginFunc
+	corsOptions = &CorsOptions{
+		Origins:           []string{},
+		Headers:           []string{},
+		AllowedOriginFunc: nil,
+	}
+	router, err = NewWithCorsOptions(corsOptions)
+	if err != nil {
+		t.Fatalf("Error creating router: %v", err)
+	}
+	if router == nil {
+		t.Fatal("Router is nil")
+	}
+	// Test case with empty origins and headers and AllowedOriginFunc
+	corsOptions = &CorsOptions{
+		Origins:           []string{},
+		Headers:           []string{},
+		AllowedOriginFunc: func(r *http.Request, origin string) bool { return true },
+	}
+	router, err = NewWithCorsOptions(corsOptions)
+	if err != nil {
+		t.Fatalf("Error creating router: %v", err)
+	}
+	if router == nil {
+		t.Fatal("Router is nil")
+	}
+	// Test case with all values present
+	corsOptions = &CorsOptions{
+		Origins:           []string{"http://localhost"},
+		Headers:           []string{"Accept", "Content-Type"},
+		AllowedOriginFunc: func(r *http.Request, origin string) bool { return true },
+	}
+	router, err = NewWithCorsOptions(corsOptions)
 	if err != nil {
 		t.Fatalf("Error creating router: %v", err)
 	}
