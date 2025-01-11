@@ -1,4 +1,4 @@
-package publisher
+package uuid
 
 import (
 	"github.com/google/uuid"
