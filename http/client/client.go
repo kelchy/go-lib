@@ -144,7 +144,7 @@ func (c Client) req(ctx context.Context, method string, url string, data []byte,
 		return res
 	}
 	res.Response = *resp
-	if c.JSON == true {
+	if c.JSON {
 		res.JSONparse()
 	} else {
 		res.HTMLparse()
