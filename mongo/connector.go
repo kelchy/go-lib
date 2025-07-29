@@ -6,9 +6,9 @@ import (
 	"strings"
 
 	"github.com/kelchy/go-lib/log"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
-	"go.mongodb.org/mongo-driver/mongo/readpref"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/mongo/readpref"
 )
 
 // Client - instance initiated by constructor
@@ -24,21 +24,15 @@ func New(uri string) (Client, error) {
 	l, _ := log.New("")
 	var client Client
 	var e error
+
 	// create a client using the mongo uri
-	conn, e := mongo.NewClient(options.Client().ApplyURI(uri))
+	conn, e := mongo.Connect(options.Client().ApplyURI(uri))
 	if e != nil {
 		l.Error("MONGO_NEW", e)
 		return client, e
 	}
 	client.URI = uri
 	client.Connection = conn
-
-	// attempt to connect
-	e = conn.Connect(context.Background())
-	if e != nil {
-		l.Error("MONGO_CONNECT", e)
-		return client, e
-	}
 
 	// after connecting and not seeing any error, attempt to ping
 	e = conn.Ping(context.Background(), readpref.Primary())
