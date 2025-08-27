@@ -17,10 +17,10 @@ type ChiRouter = chi.Router
 
 // Router - initialized instance
 type Router struct {
-	Engine			*chi.Mux
-	log			log.Log
-	logRequest		bool
-	logSkipPath		[]string
+	Engine      *chi.Mux
+	log         log.Log
+	logRequest  bool
+	logSkipPath []string
 }
 
 // CorsOptions takes in the options for CORS
@@ -33,8 +33,8 @@ type CorsOptions struct {
 // New - constructor function to initialize an instance
 func New(origins []string, headers []string) (*Router, error) {
 	corsOptions := &CorsOptions{
-		Origins:           origins,
-		Headers:           headers,
+		Origins: origins,
+		Headers: headers,
 	}
 
 	return NewWithCorsOptions(corsOptions)
@@ -69,7 +69,7 @@ func NewWithCorsOptions(corsOptions *CorsOptions) (*Router, error) {
 	rtr.Engine.Use(cors.Handler(cors.Options{
 		AllowOriginFunc:  corsOptions.AllowedOriginFunc,
 		AllowedOrigins:   origins,
-		AllowedMethods:   []string{ "GET", "POST", "PUT", "DELETE", "OPTIONS" },
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
 		AllowedHeaders:   headers,
 		ExposedHeaders:   []string{"Link"},
 		AllowCredentials: true,

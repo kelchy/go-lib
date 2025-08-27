@@ -10,12 +10,10 @@ lint: $(GOPATH)/bin/golint
 	${GOPATH}/bin/golint -set_exit_status ./...
 
 test: lint
+ifndef SUB
+	@echo "SUB not defined defaulting to all"
 	$(MAKE) test -C client
 	$(MAKE) test -C server
-
-ifndef ${SUB}
-	@echo "SUB not defined defaulting to client"
-	$(MAKE) test -C client
 else
 	$(MAKE) test -C ${SUB}
 endif

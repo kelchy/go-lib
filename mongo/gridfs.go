@@ -7,8 +7,8 @@ import (
 	"io/ioutil"
 	"path"
 
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo/gridfs"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 // this is to add functionality to use mongodb's gridfs - store files in mongodb
@@ -36,14 +36,11 @@ func (client Client) FSlist(transactionCtx context.Context, filter bson.M, sort 
 
 // FSset - function to upload the actual file content
 func (client Client) FSset(filename string) (int, error) {
+	ctx := context.Background()
 	var e error
 
 	// initialize bucket
-	bucket, e := gridfs.NewBucket(client.Db)
-	if e != nil {
-		client.log.Error("MONGO_FSSET_NEW", e)
-		return -1, e
-	}
+	bucket := client.Db.GridFSBucket()
 
 	file := path.Base(filename)
 	data, e := ioutil.ReadFile(filename)
@@ -52,7 +49,8 @@ func (client Client) FSset(filename string) (int, error) {
 		return -1, e
 	}
 
-	uploadStream, e := bucket.OpenUploadStream(file)
+	uploadOpts := options.GridFSUpload().SetChunkSizeBytes(1024 * 256) // Mongo default
+	uploadStream, e := bucket.OpenUploadStream(ctx, file, uploadOpts)
 	if e != nil {
 		client.log.Error("MONGO_FSSET_OPEN", e)
 		return -1, e
@@ -74,15 +72,13 @@ func (client Client) FSget(filename string) (io.ReadSeeker, error) {
 	var rs io.ReadSeeker
 	var e error
 
+	ctx := context.Background()
+
 	// initialize bucket
-	bucket, e := gridfs.NewBucket(client.Db)
-	if e != nil {
-		client.log.Error("MONGO_FSGET_NEW", e)
-		return rs, e
-	}
+	bucket := client.Db.GridFSBucket()
 
 	// fetch stream and store into a buffer
-	_, e = bucket.DownloadToStreamByName(filename, &buf)
+	_, e = bucket.DownloadToStreamByName(ctx, filename, &buf)
 	if e != nil {
 		client.log.Error("MONGO_FSGET_DLOAD", e)
 		return nil, e
