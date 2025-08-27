@@ -10,5 +10,5 @@ lint: $(GOPATH)/bin/golint
 	${GOPATH}/bin/golint -set_exit_status ./...
 
 test: lint
-	go test -coverprofile coverage.out ./...
+	go test -coverprofile coverage.out -coverpkg=./
 	go tool cover -func=coverage.out
