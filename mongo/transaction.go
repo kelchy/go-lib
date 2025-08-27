@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/kelchy/go-lib/common"
-	"go.mongodb.org/mongo-driver/mongo"
 )
 
 /*
@@ -64,11 +63,8 @@ func (client Client) Transaction(actions []map[string]interface{}, timeout int) 
 
 	result := []interface{}{}
 
-	err = mongo.WithSession(ctx, sess, func(sessCtx mongo.SessionContext) error {
-		if err := sess.StartTransaction(); err != nil {
-			return err
-		}
-
+	_, err = sess.WithTransaction(ctx, func(sessCtx context.Context) (interface{}, error) {
+		// Define all transactions here
 		for _, action := range actions {
 			collection, _ := action["collection"].(string)
 			switch action["operation"] {
@@ -80,7 +76,7 @@ func (client Client) Transaction(actions []map[string]interface{}, timeout int) 
 					// Use context.Background() to ensure that the commit can complete successfully even if the context passed to
 					// mongo.WithSession is changed to have a timeout.
 					_ = sess.AbortTransaction(context.Background())
-					return err
+					return nil, err
 				}
 				result = append(result, map[string]interface{}{
 					"operation":    "updateOne",
@@ -94,7 +90,7 @@ func (client Client) Transaction(actions []map[string]interface{}, timeout int) 
 					// Use context.Background() to ensure that the commit can complete successfully even if the context passed to
 					// mongo.WithSession is changed to have a timeout.
 					_ = sess.AbortTransaction(context.Background())
-					return err
+					return nil, err
 				}
 				result = append(result, map[string]interface{}{
 					"operation":    "updateMany",
@@ -108,7 +104,7 @@ func (client Client) Transaction(actions []map[string]interface{}, timeout int) 
 					// Use context.Background() to ensure that the commit can complete successfully even if the context passed to
 					// mongo.WithSession is changed to have a timeout.
 					_ = sess.AbortTransaction(context.Background())
-					return err
+					return nil, err
 				}
 				result = append(result, map[string]interface{}{
 					"operation":  "insertOne",
@@ -124,7 +120,7 @@ func (client Client) Transaction(actions []map[string]interface{}, timeout int) 
 					// Use context.Background() to ensure that the commit can complete successfully even if the context passed to
 					// mongo.WithSession is changed to have a timeout.
 					_ = sess.AbortTransaction(context.Background())
-					return err
+					return nil, err
 				}
 				result = append(result, map[string]interface{}{
 					"operation":     "insertMany",
@@ -133,10 +129,7 @@ func (client Client) Transaction(actions []map[string]interface{}, timeout int) 
 				})
 			}
 		}
-
-		// Use context.Background() to ensure that the commit can complete successfully even if the context passed to
-		// mongo.WithSession is changed to have a timeout.
-		return sess.CommitTransaction(context.Background())
+		return nil, nil
 	})
 
 	return result, err
