@@ -40,9 +40,9 @@ jobs:
     - name: Create a GitHub release
       uses: actions/create-release@v1
       with:
-        tag_name: rmq/publisher/${{ env.VERSION }}
-        release_name: Release rmq/publisher/${{ env.VERSION }}
+        tag_name: rmq/publisher/v${{ env.VERSION }}
+        release_name: Release rmq/publisher/v${{ env.VERSION }}
         body: |
-          Release: rmq/publisher/${{ env.VERSION }}
+          Release: rmq/publisher/v${{ env.VERSION }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

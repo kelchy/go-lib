@@ -40,9 +40,9 @@ jobs:
     - name: Create a GitHub release
       uses: actions/create-release@v1
       with:
-        tag_name: redis/${{ env.VERSION }}
-        release_name: Release redis/${{ env.VERSION }}
+        tag_name: redis/v${{ env.VERSION }}
+        release_name: Release redis/v${{ env.VERSION }}
         body: |
-          Release: redis/${{ env.VERSION }}
+          Release: redis/v${{ env.VERSION }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
