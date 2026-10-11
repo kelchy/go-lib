@@ -1,0 +1,49 @@
+name: go-publish-auth
+on:
+  pull_request:
+    # Triggers the workflow only when code is MERGED to the auth/* branch
+    branches:
+      - auth/*     # Target branch of the PR
+    types:
+      - closed   # Triggers when PR is closed (merged or abandoned) "if" below handles cases on "abandoned"
+    paths:
+      - auth/go.mod
+jobs:
+  go-publish:
+    name: go-publish-auth
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 2
+    - name: Get version
+      run: |
+        VERSION=$(sed -n '1s|^//v||p' auth/go.mod)
+        if [ -z "$VERSION" ]; then
+          echo "Unable to read a version from auth/go.mod. Expected its first line to be //v<version>."
+          exit 1
+        fi
+        # Save it to the environment file
+        echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+    - name: Version update or file change detected
+      uses: actions/setup-go@v3
+      with:
+        go-version: '^1.26.0'
+        cache: true
+        cache-dependency-path: auth/go.sum
+
+    - name: Test
+      run: make test-auth
+
+    - name: Create a GitHub release
+      uses: actions/create-release@v1
+      with:
+        tag_name: auth/v${{ env.VERSION }}
+        release_name: Release auth/v${{ env.VERSION }}
+        body: |
+          Release: auth/v${{ env.VERSION }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

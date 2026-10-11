@@ -23,7 +23,7 @@ func (client Client) Find(ctx context.Context, colname string, filter map[string
 		opts.SetLimit(opt["limit"].(int64))
 	}
 	if opt["sort"] != nil && opt["order"] != nil {
-		opts.SetSort(bson.D{{opt["sort"].(string), opt["order"].(int64)}})
+		opts.SetSort(bson.D{{Key: opt["sort"].(string), Value: opt["order"].(int64)}})
 	}
 
 	var e error
@@ -58,7 +58,7 @@ func (client Client) FindOne(ctx context.Context, colname string,
 		opts.SetSkip(opt["skip"].(int64))
 	}
 	if opt["sort"] != nil && opt["order"] != nil {
-		opts.SetSort(bson.D{{opt["sort"].(string), opt["order"].(int64)}})
+		opts.SetSort(bson.D{{Key: opt["sort"].(string), Value: opt["order"].(int64)}})
 	}
 
 	// fetch doc

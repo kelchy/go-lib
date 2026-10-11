@@ -44,17 +44,6 @@ func (client Client) InsertMany(ctx context.Context, colname string, docs []inte
 			res = append(res, id)
 		}
 	}
-	if e != nil {
-		/*
-			if ordered is true, you will be able to identify which insert failed and which succeeded since all
-			subsequent inserts after a failure will not be executed.
-			if ordered is false, you will not be able to identify which insert failed and which succeeded if default _id
-			is used since they will be executed in parallel. If _id is custom, you will be able to identify which insert
-			failed.
-		*/
-		client.log.Error("MONGO_INSERTMANY", e)
-		return 0, res, e
-	}
 	return len(res), res, nil
 }
 

@@ -3,11 +3,11 @@ SHELL := /bin/bash
 .PHONY:
 
 # this will install binary in ${GOPATH}
-$(GOPATH)/bin/golint:
-	go install golang.org/x/lint/golint@v0.0.0-20201208152925-83fdc39ff7b5
+${GOPATH}/bin/golangci-lint:
+	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
 
-lint: $(GOPATH)/bin/golint
-	${GOPATH}/bin/golint -set_exit_status ./...
+lint: ${GOPATH}/bin/golangci-lint
+	${GOPATH}/bin/golangci-lint run ./...
 
 test: lint
 	go test -coverprofile coverage.out -coverpkg=./
