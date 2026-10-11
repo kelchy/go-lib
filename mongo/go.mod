@@ -1,4 +1,4 @@
-//v1.0.0
+//v1.1.0
 module github.com/kelchy/go-lib/mongo
 
 require (
@@ -19,4 +19,4 @@ require (
 	golang.org/x/text v0.22.0 // indirect
 )
 
-go 1.19
+go 1.26
