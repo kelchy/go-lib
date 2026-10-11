@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
-	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
@@ -48,7 +47,7 @@ func (client Client) Find(ctx context.Context, colname string, filter map[string
 
 // FindOne - function to find first encountered doc in collection, ctx can be nil
 func (client Client) FindOne(ctx context.Context, colname string,
-	filter map[string]interface{}, opt map[string]interface{}) (*mongo.SingleResult, error) {
+	filter map[string]interface{}, opt map[string]interface{}) (*SingleResult, error) {
 	// select collection
 	col := client.Db.Collection(colname)
 
@@ -68,7 +67,7 @@ func (client Client) FindOne(ctx context.Context, colname string,
 		return nil, doc.Err()
 	}
 
-	return doc, nil
+	return NewSingleResult(doc), nil
 }
 
 // Aggregate - function to aggregate docs in collection, ctx can be nil
