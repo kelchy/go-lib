@@ -11,6 +11,7 @@ on:
 jobs:
   go-publish:
     name: go-publish-auth
+    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
 
     steps:
@@ -40,9 +41,9 @@ jobs:
     - name: Create a GitHub release
       uses: actions/create-release@v1
       with:
-        tag_name: auth/${{ env.VERSION }}
-        release_name: Release auth/${{ env.VERSION }}
+        tag_name: auth/v${{ env.VERSION }}
+        release_name: Release auth/v${{ env.VERSION }}
         body: |
-          Release: auth/${{ env.VERSION }}
+          Release: auth/v${{ env.VERSION }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
