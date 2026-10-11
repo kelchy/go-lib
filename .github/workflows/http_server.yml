@@ -1,11 +1,17 @@
 name: go-publish-http-server
 on:
-  push:
+  pull_request:
+    # Run after a pull request targeting this module's release branch is closed.
     branches:
       - http/server/*
+    types:
+      - closed
+    paths:
+      - http/server/go.mod
 jobs:
   go-publish:
     name: go-publish-http-server
+    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
 
     steps:
@@ -13,34 +19,30 @@ jobs:
       uses: actions/checkout@v3
       with:
         fetch-depth: 2
-    - name: Check file changes
-      uses: tj-actions/changed-files@v26
-      id: check
-      with:
-        files: |
-          http/server/go.mod
     - name: Get version
-      if: steps.check.outputs.any_changed == 'true'
-      id: checkver
-      run: echo '::set-output name=version::'`head -n 1 http/server/go.mod | sed 's/\/\///'`
-    - name: Version update or file change detected
-      if: steps.check.outputs.any_changed == 'true'
+      run: |
+        VERSION=$(sed -n '1s|^//v||p' http/server/go.mod)
+        if [ -z "$VERSION" ]; then
+          echo "Unable to read a version from http/server/go.mod. Expected its first line to be //v<version>."
+          exit 1
+        fi
+        echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+    - name: Set up Go
       uses: actions/setup-go@v3
       with:
         go-version: '^1.18.1'
         cache: true
+        cache-dependency-path: http/server/go.sum
 
     - name: Test
-      if: steps.check.outputs.any_changed == 'true'
       run: make test-http SUB=server
 
     - name: Create a GitHub release
-      if: steps.check.outputs.any_changed == 'true'
       uses: actions/create-release@v1
       with:
-        tag_name: http/server/${{ steps.checkver.outputs.version }}
-        release_name: Release http/server/${{ steps.checkver.outputs.version }}
+        tag_name: http/server/${{ env.VERSION }}
+        release_name: Release http/server/${{ env.VERSION }}
         body: |
-          Release: http/server/${{ steps.checkver.outputs.version }}
+          Release: http/server/${{ env.VERSION }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

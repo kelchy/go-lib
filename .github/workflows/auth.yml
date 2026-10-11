@@ -11,6 +11,7 @@ on:
 jobs:
   go-publish:
     name: go-publish-auth
+    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
 
     steps:
