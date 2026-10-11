@@ -1,0 +1,52 @@
+name: go-publish-auth
+on:
+  pull_request:
+    # Triggers the workflow only when code is MERGED to the auth/* branch
+    branches:
+      - auth/*     # Target branch of the PR
+    types:
+      - closed   # Triggers when PR is closed (merged or abandoned) "if" below handles cases on "abandoned"
+    paths:
+      - auth/go.mod
+jobs:
+  go-publish:
+    name: go-publish-auth
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 2
+    - name: Check file changes
+      uses: tj-actions/changed-files@v26
+      id: check
+      with:
+        files: |
+          auth/go.mod
+    - name: Get version
+      if: steps.check.outputs.any_changed == 'true'
+      id: checkver
+      run: echo '::set-output name=version::'`head -n 1 auth/go.mod | sed 's/\/\///'`
+    - name: Version update or file change detected
+      if: steps.check.outputs.any_changed == 'true'
+      uses: actions/setup-go@v3
+      with:
+        go-version: '^1.26.0'
+        cache: true
+        cache-dependency-path: auth/go.sum
+
+    - name: Test
+      if: steps.check.outputs.any_changed == 'true'
+      run: make test-auth
+
+    - name: Create a GitHub release
+      if: steps.check.outputs.any_changed == 'true'
+      uses: actions/create-release@v1
+      with:
+        tag_name: auth/${{ steps.checkver.outputs.version }}
+        release_name: Release auth/${{ steps.checkver.outputs.version }}
+        body: |
+          Release: auth/${{ steps.checkver.outputs.version }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
