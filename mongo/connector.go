@@ -22,6 +22,27 @@ type Client struct {
 // ErrNoDocuments is returned by FindOne when a query matches no documents.
 var ErrNoDocuments = mongo.ErrNoDocuments
 
+// UpdateResult is the driver's update result. UpdateOneResult and
+// UpdateManyResult return it so callers can read MatchedCount, which
+// UpdateOne and UpdateMany drop.
+type UpdateResult = mongo.UpdateResult
+
+// IsDuplicateKeyError reports whether err is a unique index violation, so
+// callers can treat an insert race as a normal outcome without importing the
+// driver.
+func IsDuplicateKeyError(err error) bool {
+	return mongo.IsDuplicateKeyError(err)
+}
+
+// expected reports whether err is a normal query outcome rather than a
+// failure: no document found, or a unique index rejecting a duplicate. Such
+// errors are still returned to the caller but are not logged, because the
+// logger prints a stack trace and callers that race on inserts or look up
+// optional documents hit these on most calls.
+func expected(err error) bool {
+	return errors.Is(err, mongo.ErrNoDocuments) || mongo.IsDuplicateKeyError(err)
+}
+
 // New - constructor to initiate client instance
 func New(uri string) (Client, error) {
 	return newClient(context.Background(), uri, false)
@@ -87,4 +108,19 @@ func (client Client) CreateTTLIndex(ctx context.Context, collection, field strin
 		client.log.Error("MONGO_CREATE_TTL_INDEX", err)
 	}
 	return err
+}
+
+// CreateIndex creates an index on a collection and returns its name. Pass keys
+// as an ordered document (bson.D) for a compound index, since a map does not
+// keep key order. opts may be nil.
+func (client Client) CreateIndex(ctx context.Context, colname string, keys interface{},
+	opts *options.IndexOptionsBuilder) (string, error) {
+	name, err := client.Db.Collection(colname).Indexes().CreateOne(ctx, mongo.IndexModel{
+		Keys:    keys,
+		Options: opts,
+	})
+	if err != nil {
+		client.log.Error("MONGO_CREATE_INDEX", err)
+	}
+	return name, err
 }
