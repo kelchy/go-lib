@@ -63,11 +63,25 @@ func (client Client) FindOne(ctx context.Context, colname string,
 	// fetch doc
 	doc := col.FindOne(ctx, filter, opts)
 	if doc.Err() != nil {
-		client.log.Error("MONGO_FINDONE", doc.Err())
+		// a miss is returned as ErrNoDocuments but not logged
+		if !expected(doc.Err()) {
+			client.log.Error("MONGO_FINDONE", doc.Err())
+		}
 		return nil, doc.Err()
 	}
 
 	return NewSingleResult(doc), nil
+}
+
+// CountDocuments counts the docs in collection that match filter. Pass
+// options.Count().SetLimit(1) to only check whether any doc matches.
+func (client Client) CountDocuments(ctx context.Context, colname string, filter interface{},
+	opts ...options.Lister[options.CountOptions]) (int64, error) {
+	n, err := client.Db.Collection(colname).CountDocuments(ctx, filter, opts...)
+	if err != nil {
+		client.log.Error("MONGO_COUNTDOCUMENTS", err)
+	}
+	return n, err
 }
 
 // Aggregate - function to aggregate docs in collection, ctx can be nil
