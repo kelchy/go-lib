@@ -119,6 +119,15 @@ func (client Client) UpdateOneResult(ctx context.Context, colname string,
 	return result, err
 }
 
+// UpsertOne updates the doc that matches filter, or inserts one built from
+// filter and update when none matches, and returns the full result
+// (UpsertedID is set on an insert). Two concurrent upserts of the same _id can
+// race: the loser gets a duplicate key error, which is returned but not logged.
+func (client Client) UpsertOne(ctx context.Context, colname string,
+	filter interface{}, update interface{}) (*UpdateResult, error) {
+	return client.UpdateOneResult(ctx, colname, filter, update, options.UpdateOne().SetUpsert(true))
+}
+
 // UpdateManyResult updates many docs and returns the full result, so the
 // caller can compare MatchedCount with the number of docs it expected.
 func (client Client) UpdateManyResult(ctx context.Context, colname string,
