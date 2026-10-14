@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/event"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 	"go.mongodb.org/mongo-driver/v2/x/mongo/driver/drivertest"
@@ -368,6 +369,76 @@ func TestUpdateResultReturnsMatchedCount(t *testing.T) {
 	many, err := c.UpdateManyResult(ctx, "items", bson.M{}, unset)
 	if err != nil || many.MatchedCount != 3 || many.ModifiedCount != 2 {
 		t.Fatalf("UpdateManyResult() = (%+v, %v), want matched 3, modified 2", many, err)
+	}
+}
+
+func TestFindInto(t *testing.T) {
+	type item struct {
+		Name string `bson:"name"`
+	}
+	client, _ := mockMongo(t,
+		bson.D{{Key: "ok", Value: 1}, {Key: "cursor", Value: bson.D{
+			{Key: "id", Value: int64(0)}, {Key: "ns", Value: "test.items"},
+			{Key: "firstBatch", Value: bson.A{bson.D{{Key: "name", Value: "Ada"}}, bson.D{{Key: "name", Value: "Grace"}}}},
+		}}},
+		emptyCursor,
+		commandError,
+	)
+	c := Client{Db: client.Database("test")}
+	ctx := context.Background()
+
+	// docs decode straight into the caller's type, with Find's options
+	var items []item
+	err := c.FindInto(ctx, "items", nil, map[string]interface{}{"limit": int64(2), "sort": "name", "order": int64(1)}, &items)
+	if err != nil || len(items) != 2 || items[0].Name != "Ada" || items[1].Name != "Grace" {
+		t.Fatalf("FindInto() = (%+v, %v), want Ada and Grace", items, err)
+	}
+	// out must be a pointer to a slice: a decode failure is returned and logged
+	var notPointer []item
+	if logged := stderr(t, func() { err = c.FindInto(ctx, "items", nil, nil, notPointer) }); err == nil || !strings.Contains(logged, "MONGO_CURSOR") {
+		t.Fatalf("FindInto(non-pointer) = %v, logged %q; want a logged cursor error", err, logged)
+	}
+	// a failed find is returned and logged
+	if logged := stderr(t, func() { err = c.FindInto(ctx, "items", nil, nil, &items) }); err == nil || !strings.Contains(logged, "MONGO_FIND") {
+		t.Fatalf("FindInto(command error) = %v, logged %q; want a logged find error", err, logged)
+	}
+}
+
+func TestUpsertOne(t *testing.T) {
+	// watch the update commands the client sends, to check the upsert flag
+	var sent []bson.Raw
+	deployment := drivertest.NewMockDeployment(
+		bson.D{{Key: "ok", Value: 1}, {Key: "n", Value: 1}, {Key: "nModified", Value: 0},
+			{Key: "upserted", Value: bson.A{bson.D{{Key: "index", Value: 0}, {Key: "_id", Value: "call-1"}}}}},
+		duplicateKey,
+	)
+	clientOptions := options.Client().SetMonitor(&event.CommandMonitor{Started: func(_ context.Context, e *event.CommandStartedEvent) {
+		if e.CommandName == "update" {
+			sent = append(sent, e.Command)
+		}
+	}})
+	clientOptions.Deployment = deployment //nolint:staticcheck // Driver test hook required for an in-memory deployment.
+	client, err := mongo.Connect(clientOptions)
+	if err != nil {
+		t.Fatalf("connect mock MongoDB client: %v", err)
+	}
+	t.Cleanup(func() { _ = client.Disconnect(context.Background()) })
+	c := Client{Db: client.Database("test")}
+	ctx := context.Background()
+	update := bson.M{"$set": bson.M{"ended_at": 1}, "$setOnInsert": bson.M{"owner": ""}}
+
+	// no doc matched, so one was inserted
+	res, err := c.UpsertOne(ctx, "calls", bson.M{"_id": "call-1"}, update)
+	if err != nil || res.UpsertedID != "call-1" || res.MatchedCount != 0 {
+		t.Fatalf("UpsertOne() = (%+v, %v), want an insert of call-1", res, err)
+	}
+	if len(sent) != 1 || !sent[0].Lookup("updates", "0", "upsert").Boolean() {
+		t.Fatalf("UpsertOne() sent %v, want one update with upsert: true", sent)
+	}
+	// a racing upsert of the same _id returns the duplicate key, unlogged
+	logged := stderr(t, func() { _, err = c.UpsertOne(ctx, "calls", bson.M{"_id": "call-1"}, update) })
+	if !IsDuplicateKeyError(err) || strings.Contains(logged, "MONGO_") {
+		t.Fatalf("UpsertOne(race) = %v, logged %q; want an unlogged duplicate key", err, logged)
 	}
 }
 
