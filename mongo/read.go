@@ -17,7 +17,7 @@ func (client Client) Find(ctx context.Context, colname string, filter map[string
 
 // FindInto finds docs in collection and decodes all of them into out, a
 // pointer to a slice (for example *[]MyStruct). It takes the same options as
-// Find: skip, limit, sort and order. Use it over Find when the caller wants
+// Find: skip, limit, and sort and order, or sorts for several keys. Use it over Find when the caller wants
 // typed results instead of bson.M. ctx can be nil.
 func (client Client) FindInto(ctx context.Context, colname string, filter map[string]interface{},
 	opt map[string]interface{}, out interface{}) error {
@@ -48,10 +48,23 @@ func findOptions(opt map[string]interface{}) *options.FindOptionsBuilder {
 	if opt["limit"] != nil {
 		opts.SetLimit(opt["limit"].(int64))
 	}
-	if opt["sort"] != nil && opt["order"] != nil {
-		opts.SetSort(bson.D{{Key: opt["sort"].(string), Value: opt["order"].(int64)}})
+	if sort, ok := sortOption(opt); ok {
+		opts.SetSort(sort)
 	}
 	return opts
+}
+
+// sortOption reads the sort from an option map: "sorts" is an ordered list of
+// keys (a bson.D such as {{"created_at", 1}, {"_id", 1}}, used for ties), else
+// "sort" and "order" for a single key. "sorts" wins when both are set.
+func sortOption(opt map[string]interface{}) (bson.D, bool) {
+	if sorts, ok := opt["sorts"].(bson.D); ok && len(sorts) > 0 {
+		return sorts, true
+	}
+	if opt["sort"] != nil && opt["order"] != nil {
+		return bson.D{{Key: opt["sort"].(string), Value: opt["order"].(int64)}}, true
+	}
+	return nil, false
 }
 
 // FindOne - function to find first encountered doc in collection, ctx can be nil
@@ -65,8 +78,8 @@ func (client Client) FindOne(ctx context.Context, colname string,
 	if opt["skip"] != nil {
 		opts.SetSkip(opt["skip"].(int64))
 	}
-	if opt["sort"] != nil && opt["order"] != nil {
-		opts.SetSort(bson.D{{Key: opt["sort"].(string), Value: opt["order"].(int64)}})
+	if sort, ok := sortOption(opt); ok {
+		opts.SetSort(sort)
 	}
 
 	// fetch doc
