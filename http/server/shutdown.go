@@ -50,13 +50,14 @@ func (rtr Router) Draining() bool {
 func (rtr Router) RunContext(ctx context.Context, proto string, hostport string) error {
 	rtr.log.Out("SERVER_RUN", "Listening "+proto+" "+hostport)
 	var e error
-	if proto == "http" {
+	switch proto {
+	case "http":
 		e = rtr.serve(ctx, &http.Server{Addr: hostport, Handler: rtr.Engine}, nil)
-	} else if proto == "h2c" {
+	case "h2c":
 		// h2c denotes http/2 in cleartext, useful in cases where API GW strips encryption
 		e = rtr.serve(ctx, &http.Server{Addr: hostport, Handler: h2cHandler(rtr.Engine)}, nil)
-	} else {
-		e = errors.New("Unknown Proto")
+	default:
+		e = errors.New("unknown proto")
 	}
 	if e != nil {
 		rtr.log.Error("SERVER_RUN", e)
@@ -69,12 +70,13 @@ func (rtr Router) RunContext(ctx context.Context, proto string, hostport string)
 func (rtr Router) RunSContext(ctx context.Context, proto string, hostport string, crt string, key string) error {
 	rtr.log.Out("SERVER_RUNS", "Listening "+proto+" "+hostport)
 	var e error
-	if proto == "https" {
+	switch proto {
+	case "https":
 		e = rtr.serve(ctx, &http.Server{Addr: hostport, Handler: rtr.Engine}, []string{crt, key})
-	} else if proto == "h2" {
+	case "h2":
 		// TODO: add h2
-	} else {
-		e = errors.New("Unknown Proto")
+	default:
+		e = errors.New("unknown proto")
 	}
 	if e != nil {
 		rtr.log.Error("SERVER_RUNS", e)
@@ -122,7 +124,10 @@ func (rtr Router) serve(ctx context.Context, srv *http.Server, certKey []string)
 	sctx, cancel := context.WithTimeout(context.Background(), sd.timeout)
 	defer cancel()
 	e = srv.Shutdown(sctx)
-	<-errc // http.ErrServerClosed once Shutdown is called
+	// http.ErrServerClosed once Shutdown is called; anything else is a real serve error
+	if serr := <-errc; e == nil && serr != nil && !errors.Is(serr, http.ErrServerClosed) {
+		e = serr
+	}
 	return e
 }
 

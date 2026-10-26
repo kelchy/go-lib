@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"log"
 	"net/http"
 
 	"github.com/kelchy/go-lib/http/server"
@@ -9,7 +10,7 @@ import (
 
 func main() {
 	// initialize with empty cors setting
-        rtr, _ := server.New([]string{"http://localhost:8080"}, []string{"X-CUSTOM-HEADER"})
+	rtr, _ := server.New([]string{"http://localhost:8080"}, []string{"X-CUSTOM-HEADER"})
 
 	// sample custom middleware
 	rtr.Engine.Use(func(next http.Handler) http.Handler {
@@ -37,5 +38,7 @@ func main() {
 	rtr.SetLogRequest(false)
 
 	// run server with cleartext http/2
-	rtr.Run("http", ":8080")
+	if err := rtr.Run("http", ":8080"); err != nil {
+		log.Fatal(err)
+	}
 }
