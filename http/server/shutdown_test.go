@@ -27,7 +27,7 @@ func freeAddr(t *testing.T) string {
 		t.Fatal(e)
 	}
 	addr := ln.Addr().String()
-	ln.Close()
+	_ = ln.Close()
 	return addr
 }
 
@@ -36,7 +36,7 @@ func waitUp(t *testing.T, client *http.Client, url string) {
 	t.Helper()
 	for i := 0; i < 200; i++ {
 		if res, e := client.Get(url); e == nil {
-			res.Body.Close()
+			_ = res.Body.Close()
 			return
 		}
 		time.Sleep(10 * time.Millisecond)
@@ -76,7 +76,7 @@ func TestRunContextDrainsInFlightRequests(t *testing.T) {
 			code <- 0
 			return
 		}
-		res.Body.Close()
+		_ = res.Body.Close()
 		code <- res.StatusCode
 	}()
 	<-started
@@ -108,7 +108,7 @@ func TestRunContextShutdownTimeout(t *testing.T) {
 	waitUp(t, http.DefaultClient, "http://"+addr+"/up")
 	go func() {
 		if res, e := http.Get("http://" + addr + "/stuck"); e == nil {
-			res.Body.Close()
+			_ = res.Body.Close()
 		}
 	}()
 	<-started
@@ -144,7 +144,7 @@ func TestRunContextErrors(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	defer ln.Close()
+	defer func() { _ = ln.Close() }()
 	if e := rtr.RunContext(context.Background(), "http", ln.Addr().String()); e == nil {
 		t.Fatal("busy address should fail")
 	}
@@ -191,8 +191,12 @@ func writeCert(t *testing.T) (string, string) {
 	}
 	dir := t.TempDir()
 	crt, key := filepath.Join(dir, "crt.pem"), filepath.Join(dir, "key.pem")
-	os.WriteFile(crt, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der}), 0o600)
-	os.WriteFile(key, pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: kder}), 0o600)
+	if err := os.WriteFile(crt, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der}), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(key, pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: kder}), 0o600); err != nil {
+		t.Fatal(err)
+	}
 	return crt, key
 }
 
