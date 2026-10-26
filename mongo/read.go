@@ -10,10 +10,37 @@ import (
 // Find - function to find doc in collection, ctx can be nil
 func (client Client) Find(ctx context.Context, colname string, filter map[string]interface{},
 	opt map[string]interface{}) ([]bson.M, error) {
+	var docs []bson.M
+	e := client.FindInto(ctx, colname, filter, opt, &docs)
+	return docs, e
+}
+
+// FindInto finds docs in collection and decodes all of them into out, a
+// pointer to a slice (for example *[]MyStruct). It takes the same options as
+// Find: skip, limit, sort and order. Use it over Find when the caller wants
+// typed results instead of bson.M. ctx can be nil.
+func (client Client) FindInto(ctx context.Context, colname string, filter map[string]interface{},
+	opt map[string]interface{}, out interface{}) error {
 	// select collection
 	col := client.Db.Collection(colname)
 
-	// handle options
+	// fetch cursor
+	cursor, e := col.Find(ctx, filter, findOptions(opt))
+	if e != nil {
+		client.log.Error("MONGO_FIND", e)
+		return e
+	}
+
+	// move cursor to fetch all
+	e = cursor.All(ctx, out)
+	if e != nil {
+		client.log.Error("MONGO_CURSOR", e)
+	}
+	return e
+}
+
+// findOptions turns Find's option map into the driver's find options.
+func findOptions(opt map[string]interface{}) *options.FindOptionsBuilder {
 	opts := options.Find()
 	if opt["skip"] != nil {
 		opts.SetSkip(opt["skip"].(int64))
@@ -24,25 +51,7 @@ func (client Client) Find(ctx context.Context, colname string, filter map[string
 	if opt["sort"] != nil && opt["order"] != nil {
 		opts.SetSort(bson.D{{Key: opt["sort"].(string), Value: opt["order"].(int64)}})
 	}
-
-	var e error
-	var docs []bson.M
-
-	// fetch cursor
-	cursor, e := col.Find(ctx, filter, opts)
-	if e != nil {
-		client.log.Error("MONGO_FIND", e)
-		return docs, e
-	}
-
-	// move cursor to fetch all
-	e = cursor.All(ctx, &docs)
-	if e != nil {
-		client.log.Error("MONGO_CURSOR", e)
-		return docs, e
-	}
-
-	return docs, e
+	return opts
 }
 
 // FindOne - function to find first encountered doc in collection, ctx can be nil
