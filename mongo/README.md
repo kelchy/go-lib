@@ -26,6 +26,20 @@ Mongo, e := mongo.New(uri)
                 router.JSON(w, r, res)
         }
 ```
+- Sort on several keys (ties broken in order), with "sorts" instead of "sort"/"order"
+```
+        docs, e := Mongo.Find(ctx, "lines", bson.M{"tenant_id": t}, map[string]interface{}{
+                "sorts": bson.D{{Key: "created_at", Value: 1}, {Key: "_id", Value: 1}}, "limit": int64(100)})
+```
+- Claim a doc atomically: update the first match and get it back (ErrNoDocuments when none match, not logged)
+```
+        res, e := Mongo.FindOneAndUpdate(ctx, "deliveries", bson.M{"state": "queued"},
+                bson.M{"$set": bson.M{"state": "sending"}},
+                options.FindOneAndUpdate().SetSort(bson.D{{Key: "due", Value: 1}}).SetReturnDocument(options.After))
+        if errors.Is(e, mongo.ErrNoDocuments) {
+                // nothing to claim
+        }
+```
 - Insert file in gridFS
 ```
         filesize, e := Mongo.FSset("/tmp/cdr.csv")

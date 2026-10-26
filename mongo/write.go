@@ -181,3 +181,20 @@ func (client Client) ReplaceOne(ctx context.Context, colname string,
 	}
 	return result.ModifiedCount, e
 }
+
+// FindOneAndUpdate updates the first doc that matches filter and returns it,
+// in one atomic step, so callers can claim work without a race. Pass driver
+// options for the sort, upsert and which version comes back, for example
+// options.FindOneAndUpdate().SetSort(bson.D{{Key: "due", Value: 1}}).SetReturnDocument(options.After).
+// A miss is returned as ErrNoDocuments but not logged. ctx can be nil.
+func (client Client) FindOneAndUpdate(ctx context.Context, colname string, filter interface{},
+	update interface{}, opts ...options.Lister[options.FindOneAndUpdateOptions]) (*SingleResult, error) {
+	doc := client.Db.Collection(colname).FindOneAndUpdate(ctx, filter, update, opts...)
+	if doc.Err() != nil {
+		if !expected(doc.Err()) {
+			client.log.Error("MONGO_FINDONEANDUPDATE", doc.Err())
+		}
+		return nil, doc.Err()
+	}
+	return NewSingleResult(doc), nil
+}
