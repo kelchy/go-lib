@@ -93,6 +93,7 @@ func (rtr Router) serve(ctx context.Context, srv *http.Server, certKey []string)
 	if sd == nil {
 		sd = &shutdown{timeout: DefaultShutdownTimeout}
 	}
+	rtr.applyTimeouts(srv)
 	if certKey != nil {
 		cert, e := tls.LoadX509KeyPair(certKey[0], certKey[1])
 		if e != nil {

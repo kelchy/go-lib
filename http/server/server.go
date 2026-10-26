@@ -21,6 +21,7 @@ type Router struct {
 	logRequest  bool
 	logSkipPath []string
 	shutdown    *shutdown
+	timeouts    *Timeouts
 }
 
 // CorsOptions takes in the options for CORS
