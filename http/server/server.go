@@ -1,7 +1,6 @@
 package server
 
 import (
-	"errors"
 	"net/http"
 
 	"github.com/go-chi/chi"
@@ -21,6 +20,7 @@ type Router struct {
 	log         log.Log
 	logRequest  bool
 	logSkipPath []string
+	shutdown    *shutdown
 }
 
 // CorsOptions takes in the options for CORS
@@ -50,6 +50,7 @@ func NewWithCorsOptions(corsOptions *CorsOptions) (*Router, error) {
 	}
 	rtr.log = l
 	rtr.logRequest = true
+	rtr.shutdown = &shutdown{timeout: DefaultShutdownTimeout}
 
 	// by default middleware don't log root path which is
 	// usually used by health checks
@@ -98,40 +99,25 @@ func (rtr *Router) SetLogRequest(lr bool) {
 	rtr.logRequest = lr
 }
 
-// Run - run and listen for http
+// Run - run and listen for http until SIGINT or SIGTERM, then shut down gracefully
+// (see SetShutdown). Returns nil after a graceful shutdown
 func (rtr Router) Run(proto string, hostport string) error {
-	rtr.log.Out("SERVER_RUN", "Listening "+proto+" "+hostport)
-	var e error
-	if proto == "http" {
-		e = http.ListenAndServe(hostport, rtr.Engine)
-	} else if proto == "h2c" {
-		// h2c denotes http/2 in cleartext, useful in cases where API GW strips encryption
-		h2s := &http2.Server{}
-		http.ListenAndServe(hostport, h2c.NewHandler(rtr.Engine, h2s))
-	} else {
-		e = errors.New("Unknown Proto")
-	}
-	if e != nil {
-		rtr.log.Error("SERVER_RUN", e)
-	}
-	return e
+	ctx, stop := signalContext()
+	defer stop()
+	return rtr.RunContext(ctx, proto, hostport)
 }
 
-// RunS - run and listen for https
+// RunS - run and listen for https until SIGINT or SIGTERM, then shut down gracefully
+// (see SetShutdown). Returns nil after a graceful shutdown
 func (rtr Router) RunS(proto string, hostport string, crt string, key string) error {
-	rtr.log.Out("SERVER_RUNS", "Listening "+proto+" "+hostport)
-	var e error
-	if proto == "https" {
-		e = http.ListenAndServeTLS(hostport, crt, key, rtr.Engine)
-	} else if proto == "h2" {
-		// TODO: add h2
-	} else {
-		e = errors.New("Unknown Proto")
-	}
-	if e != nil {
-		rtr.log.Error("SERVER_RUNS", e)
-	}
-	return e
+	ctx, stop := signalContext()
+	defer stop()
+	return rtr.RunSContext(ctx, proto, hostport, crt, key)
+}
+
+// h2cHandler - serves http/2 in cleartext as well as http/1
+func h2cHandler(h http.Handler) http.Handler {
+	return h2c.NewHandler(h, &http2.Server{})
 }
 
 // Static - function to handle and serve static files within a directory on live system

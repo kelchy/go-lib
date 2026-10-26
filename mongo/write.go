@@ -44,17 +44,6 @@ func (client Client) InsertMany(ctx context.Context, colname string, docs []inte
 			res = append(res, id)
 		}
 	}
-	if e != nil {
-		/*
-			if ordered is true, you will be able to identify which insert failed and which succeeded since all
-			subsequent inserts after a failure will not be executed.
-			if ordered is false, you will not be able to identify which insert failed and which succeeded if default _id
-			is used since they will be executed in parallel. If _id is custom, you will be able to identify which insert
-			failed.
-		*/
-		client.log.Error("MONGO_INSERTMANY", e)
-		return 0, res, e
-	}
 	return len(res), res, nil
 }
 
@@ -65,7 +54,10 @@ func (client Client) InsertOne(ctx context.Context, colname string, doc interfac
 	// insert
 	result, e := col.InsertOne(ctx, doc)
 	if e != nil {
-		client.log.Error("MONGO_INSERTONE", e)
+		// a duplicate key is returned but not logged: callers use it to detect an insert race
+		if !expected(e) {
+			client.log.Error("MONGO_INSERTONE", e)
+		}
 		return "", e
 	}
 
@@ -105,10 +97,37 @@ func (client Client) UpdateOne(ctx context.Context, colname string,
 	// update
 	result, e := col.UpdateOne(ctx, filter, update, opts...)
 	if e != nil {
-		client.log.Error("MONGO_UPDATEONE", e)
+		// an upsert that loses a race returns a duplicate key; return it without logging
+		if !expected(e) {
+			client.log.Error("MONGO_UPDATEONE", e)
+		}
 		return 0, e
 	}
 	return result.ModifiedCount, e
+}
+
+// UpdateOneResult updates a single doc and returns the full result. Use it
+// over UpdateOne when the caller needs MatchedCount: an update that changes
+// nothing (for example an $unset of absent fields) matches a doc but
+// modifies none.
+func (client Client) UpdateOneResult(ctx context.Context, colname string,
+	filter interface{}, update interface{}, opts ...options.Lister[options.UpdateOneOptions]) (*UpdateResult, error) {
+	result, err := client.Db.Collection(colname).UpdateOne(ctx, filter, update, opts...)
+	if err != nil && !expected(err) {
+		client.log.Error("MONGO_UPDATEONE", err)
+	}
+	return result, err
+}
+
+// UpdateManyResult updates many docs and returns the full result, so the
+// caller can compare MatchedCount with the number of docs it expected.
+func (client Client) UpdateManyResult(ctx context.Context, colname string,
+	filter interface{}, update interface{}, opts ...options.Lister[options.UpdateManyOptions]) (*UpdateResult, error) {
+	result, err := client.Db.Collection(colname).UpdateMany(ctx, filter, update, opts...)
+	if err != nil && !expected(err) {
+		client.log.Error("MONGO_UPDATEMANY", err)
+	}
+	return result, err
 }
 
 // DeleteMany - function to delete many docs in the collection, ctx can be nil

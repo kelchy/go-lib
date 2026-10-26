@@ -2,13 +2,13 @@ package mongo
 
 import (
 	"context"
-	"net/url"
-	"strings"
+	"errors"
 
 	"github.com/kelchy/go-lib/log"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 	"go.mongodb.org/mongo-driver/v2/mongo/readpref"
+	"go.mongodb.org/mongo-driver/v2/x/mongo/driver/connstring"
 )
 
 // Client - instance initiated by constructor
@@ -19,43 +19,108 @@ type Client struct {
 	log        log.Log
 }
 
+// ErrNoDocuments is returned by FindOne when a query matches no documents.
+var ErrNoDocuments = mongo.ErrNoDocuments
+
+// UpdateResult is the driver's update result. UpdateOneResult and
+// UpdateManyResult return it so callers can read MatchedCount, which
+// UpdateOne and UpdateMany drop.
+type UpdateResult = mongo.UpdateResult
+
+// IsDuplicateKeyError reports whether err is a unique index violation, so
+// callers can treat an insert race as a normal outcome without importing the
+// driver.
+func IsDuplicateKeyError(err error) bool {
+	return mongo.IsDuplicateKeyError(err)
+}
+
+// expected reports whether err is a normal query outcome rather than a
+// failure: no document found, or a unique index rejecting a duplicate. Such
+// errors are still returned to the caller but are not logged, because the
+// logger prints a stack trace and callers that race on inserts or look up
+// optional documents hit these on most calls.
+func expected(err error) bool {
+	return errors.Is(err, mongo.ErrNoDocuments) || mongo.IsDuplicateKeyError(err)
+}
+
 // New - constructor to initiate client instance
 func New(uri string) (Client, error) {
+	return newClient(context.Background(), uri, false)
+}
+
+// NewContext constructs a client, verifies the URI and database, and pings MongoDB.
+func NewContext(ctx context.Context, uri string) (Client, error) {
+	return newClient(ctx, uri, true)
+}
+
+func newClient(ctx context.Context, uri string, requireDatabase bool) (Client, error) {
+	return newClientWithOptions(ctx, uri, requireDatabase, options.Client())
+}
+
+func newClientWithOptions(ctx context.Context, uri string, requireDatabase bool, clientOptions *options.ClientOptions) (Client, error) {
 	l, _ := log.New("")
 	var client Client
-	var e error
 
-	// create a client using the mongo uri
-	conn, e := mongo.Connect(options.Client().ApplyURI(uri))
-	if e != nil {
-		l.Error("MONGO_NEW", e)
-		return client, e
+	cs, err := connstring.ParseAndValidate(uri)
+	if err != nil {
+		return client, err
+	}
+	if requireDatabase && cs.Database == "" {
+		return client, errors.New("MONGO_URI must name a database")
+	}
+
+	conn, err := mongo.Connect(clientOptions.ApplyURI(uri))
+	if err != nil {
+		l.Error("MONGO_NEW", err)
+		return client, err
 	}
 	client.URI = uri
 	client.Connection = conn
 
-	// after connecting and not seeing any error, attempt to ping
-	e = conn.Ping(context.Background(), readpref.Primary())
-	if e != nil {
-		l.Error("MONGO_PING", e)
-		return client, e
+	if err = conn.Ping(ctx, readpref.Primary()); err != nil {
+		l.Error("MONGO_PING", err)
+		_ = conn.Disconnect(context.Background())
+		return client, err
 	}
-	// success, let's assign
-	// get db name from uri
-	db, e := uri2db(client.URI)
-	if e != nil {
-		l.Error("MONGO_URI2DB", e)
-		return client, e
-	}
-	client.Db = conn.Database(db)
+
+	client.Db = conn.Database(cs.Database)
 	client.log = l
-	return client, e
+	return client, nil
 }
 
-// function to parse the db name string from the var uri
-// assuming uri is something valid as Ping() was done before calling this
-func uri2db(uri string) (string, error) {
-	u, e := url.Parse(uri)
-	// path may have a leading /
-	return strings.TrimLeft(u.Path, "/"), e
+// Close disconnects the client.
+func (client Client) Close(ctx context.Context) error {
+	return client.Connection.Disconnect(ctx)
+}
+
+// Ready checks that MongoDB is reachable.
+func (client Client) Ready(ctx context.Context) error {
+	return client.Connection.Ping(ctx, readpref.Primary())
+}
+
+// CreateTTLIndex creates a single-field TTL index for a collection.
+func (client Client) CreateTTLIndex(ctx context.Context, collection, field string, expireAfterSeconds int32) error {
+	_, err := client.Db.Collection(collection).Indexes().CreateOne(ctx, mongo.IndexModel{
+		Keys:    map[string]int32{field: 1},
+		Options: options.Index().SetExpireAfterSeconds(expireAfterSeconds),
+	})
+	if err != nil {
+		client.log.Error("MONGO_CREATE_TTL_INDEX", err)
+	}
+	return err
+}
+
+// CreateIndex creates an index on a collection and returns its name. Pass keys
+// as an ordered document (bson.D) for a compound index, since a map does not
+// keep key order. opts may be nil.
+func (client Client) CreateIndex(ctx context.Context, colname string, keys interface{},
+	opts *options.IndexOptionsBuilder) (string, error) {
+	name, err := client.Db.Collection(colname).Indexes().CreateOne(ctx, mongo.IndexModel{
+		Keys:    keys,
+		Options: opts,
+	})
+	if err != nil {
+		client.log.Error("MONGO_CREATE_INDEX", err)
+	}
+	return name, err
 }
