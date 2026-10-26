@@ -30,7 +30,7 @@ func (rtr *Router) catchall(next http.Handler) http.Handler {
 				})
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusInternalServerError)
-				w.Write(jsonBody)
+				_, _ = w.Write(jsonBody)
 			} else if rtr.logRequest {
 				if !contains(rtr.logSkipPath, r.URL.Path) {
 					msg, _ := json.Marshal(map[string]string{
