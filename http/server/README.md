@@ -24,3 +24,25 @@
 	// run server with cleartext http/2
         rtr.Run("h2c", ":8080")
 ```
+
+### Graceful shutdown
+
+`Run` and `RunS` stop on SIGINT or SIGTERM and shut down gracefully: in-flight requests get up
+to 10 seconds to finish, and the call returns nil. Use `RunContext` / `RunSContext` to stop on
+your own context instead.
+
+```
+	// on stop, report draining, wait 5s for the load balancer to stop sending, then give
+	// in-flight requests up to 20s
+	rtr.SetShutdown(20*time.Second, 5*time.Second)
+
+	rtr.Get("/readyz", func(w http.ResponseWriter, r *http.Request) {
+		if rtr.Draining() {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	})
+
+	rtr.Run("http", ":8080")
+```
