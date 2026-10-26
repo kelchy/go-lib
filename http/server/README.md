@@ -46,3 +46,14 @@ your own context instead.
 
 	rtr.Run("http", ":8080")
 ```
+
+### Timeouts
+
+Every server gets connection timeouts by default (`DefaultTimeouts`): 5s to read the request
+headers, 10s to read the request, 10s to write the response and 60s for idle keep-alive
+connections. Change them with `SetTimeouts`, for example for a streaming endpoint; a 0 field
+means no timeout.
+
+```
+	rtr.SetTimeouts(server.Timeouts{ReadHeader: 5 * time.Second, Read: 10 * time.Second, Write: 2 * time.Minute, Idle: 60 * time.Second})
+```
