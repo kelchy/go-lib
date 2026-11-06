@@ -22,9 +22,10 @@ type ALBConfig struct {
 	TTL           time.Duration
 }
 
-// ALBClaims contains the JWT identity, timing, and scope claims.
+// ALBClaims contains the JWT identity, timing, scope, and API key ID claims.
 type ALBClaims struct {
-	Scope string `json:"scope,omitempty"`
+	Scope    string `json:"scope,omitempty"`
+	APIKeyID string `json:"key_id,omitempty"`
 	jwt.RegisteredClaims
 }
 
@@ -85,6 +86,32 @@ func (a *ALB) Generate(subject string, scopes []string) (string, ALBClaims, erro
 		Issuer: a.issuer, Subject: subject, ID: id, IssuedAt: jwt.NewNumericDate(now),
 		NotBefore: jwt.NewNumericDate(now), ExpiresAt: jwt.NewNumericDate(now.Add(a.ttl)),
 	}}
+	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
+	token.Header["kid"] = a.keyID
+	encoded, err := signJWT(token, a.key)
+	return encoded, claims, err
+}
+
+// GenerateWithKeyID signs like Generate and adds the key_id claim.
+// keyID identifies the API key, not the signing key in the kid header.
+func (a *ALB) GenerateWithKeyID(subject string, scopes []string, keyID string) (string, ALBClaims, error) {
+	if subject == "" {
+		return "", ALBClaims{}, errors.New("subject is required")
+	}
+	if keyID == "" {
+		return "", ALBClaims{}, errors.New("API key ID is required")
+	}
+	id, err := randomID()
+	if err != nil {
+		return "", ALBClaims{}, err
+	}
+
+	now := time.Now().UTC()
+	claims := ALBClaims{Scope: strings.Join(scopes, " "), APIKeyID: keyID, RegisteredClaims: jwt.RegisteredClaims{
+		Issuer: a.issuer, Subject: subject, ID: id, IssuedAt: jwt.NewNumericDate(now),
+		NotBefore: jwt.NewNumericDate(now), ExpiresAt: jwt.NewNumericDate(now.Add(a.ttl)),
+	}}
+
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
 	token.Header["kid"] = a.keyID
 	encoded, err := signJWT(token, a.key)
