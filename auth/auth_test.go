@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
 	"errors"
@@ -271,4 +272,112 @@ func TestALBGenerateValidateJWKS(t *testing.T) {
 	if strings.Contains(string(b), "PRIVATE") {
 		t.Fatalf("JWKS contains private key data: %s", b)
 	}
+}
+
+func TestALBGenerateWithKeyID(t *testing.T) {
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatal(err)
+	}
+	a, err := NewALB(ALBConfig{Issuer: "issuer", KeyID: "signing-key", PrivateKeyPEM: privateKeyPEM(t, key, true)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	decodePart := func(part string) map[string]any {
+		t.Helper()
+		b, err := base64.RawURLEncoding.DecodeString(part)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var decoded map[string]any
+		if err := json.Unmarshal(b, &decoded); err != nil {
+			t.Fatal(err)
+		}
+		return decoded
+	}
+
+	encoded, generated, err := a.GenerateWithKeyID("user", []string{"read", "write"}, "api-key")
+	if err != nil {
+		t.Fatal(err)
+	}
+	parts := strings.Split(encoded, ".")
+	if len(parts) != 3 {
+		t.Fatalf("token has %d parts, want 3", len(parts))
+	}
+	header, payload := decodePart(parts[0]), decodePart(parts[1])
+	if payload["key_id"] != "api-key" || payload["iss"] != "issuer" || payload["sub"] != "user" || payload["scope"] != "read write" {
+		t.Fatalf("unexpected payload: %+v", payload)
+	}
+	expiresAt, hasExpiresAt := payload["exp"].(float64)
+	issuedAt, hasIssuedAt := payload["iat"].(float64)
+	if !hasExpiresAt || !hasIssuedAt || expiresAt-issuedAt != 86400 {
+		t.Fatalf("unexpected token lifetime: exp=%v iat=%v, want 86400 seconds", payload["exp"], payload["iat"])
+	}
+	for _, name := range []string{"aud", "tenant_id", "customer_id"} {
+		if _, ok := payload[name]; ok {
+			t.Errorf("unexpected %s claim: %v", name, payload[name])
+		}
+	}
+	if header["kid"] != "signing-key" {
+		t.Fatalf("header kid = %v, want signing-key", header["kid"])
+	}
+	if generated.APIKeyID != "api-key" {
+		t.Fatalf("generated APIKeyID = %q, want api-key", generated.APIKeyID)
+	}
+	validated, err := a.Validate(encoded)
+	if err != nil || validated.APIKeyID != generated.APIKeyID {
+		t.Fatalf("Validate() = (%+v, %v), want APIKeyID %q", validated, err, generated.APIKeyID)
+	}
+
+	plain, _, err := a.Generate("user", []string{"read", "write"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	parts = strings.Split(plain, ".")
+	if len(parts) != 3 {
+		t.Fatalf("plain token has %d parts, want 3", len(parts))
+	}
+	payload = decodePart(parts[1])
+	if _, ok := payload["key_id"]; ok {
+		t.Fatalf("plain Generate payload contains key_id: %+v", payload)
+	}
+	validated, err = a.Validate(plain)
+	if err != nil || validated.APIKeyID != "" {
+		t.Fatalf("plain Validate() = (%+v, %v), want empty APIKeyID", validated, err)
+	}
+
+	for _, tc := range []struct {
+		name    string
+		subject string
+		keyID   string
+		want    string
+	}{
+		{"empty subject", "", "api-key", "subject is required"},
+		{"empty key ID", "user", "", "API key ID is required"},
+		{"both empty", "", "", "subject is required"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if encoded, _, err := a.GenerateWithKeyID(tc.subject, nil, tc.keyID); err == nil || err.Error() != tc.want || encoded != "" {
+				t.Fatalf("GenerateWithKeyID() = (%q, %v), want empty token and %q", encoded, err, tc.want)
+			}
+		})
+	}
+	t.Run("random ID failure", func(t *testing.T) {
+		original := readRandom
+		t.Cleanup(func() { readRandom = original })
+		want := errors.New("random source failed")
+		readRandom = func([]byte) (int, error) { return 0, want }
+		if encoded, _, err := a.GenerateWithKeyID("user", nil, "api-key"); !errors.Is(err, want) || encoded != "" {
+			t.Fatalf("GenerateWithKeyID() = (%q, %v), want empty token and %v", encoded, err, want)
+		}
+	})
+	t.Run("signing failure", func(t *testing.T) {
+		original := signJWT
+		t.Cleanup(func() { signJWT = original })
+		want := errors.New("sign failed")
+		signJWT = func(*jwt.Token, *rsa.PrivateKey) (string, error) { return "", want }
+		if encoded, _, err := a.GenerateWithKeyID("user", nil, "api-key"); !errors.Is(err, want) || encoded != "" {
+			t.Fatalf("GenerateWithKeyID() = (%q, %v), want empty token and %v", encoded, err, want)
+		}
+	})
 }

@@ -1,4 +1,4 @@
-//v0.1.3
+//v0.1.4
 module github.com/kelchy/go-lib/auth
 
 go 1.26

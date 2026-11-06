@@ -2,12 +2,14 @@ SHELL := /bin/bash
 
 .PHONY:
 
-# this will install binary in ${GOPATH}
-$(GOPATH)/bin/golint:
-	go install golang.org/x/lint/golint@v0.0.0-20201208152925-83fdc39ff7b5
-
-lint: $(GOPATH)/bin/golint
-	${GOPATH}/bin/golint -set_exit_status ./...
+lint:
+ifndef SUB
+	@echo "SUB not defined defaulting to all"
+	$(MAKE) lint -C client
+	$(MAKE) lint -C server
+else
+	$(MAKE) lint -C ${SUB}
+endif
 
 test: lint
 ifndef SUB

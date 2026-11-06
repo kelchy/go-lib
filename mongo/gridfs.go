@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"io"
-	"io/ioutil"
+	"os"
 	"path"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
@@ -43,7 +43,7 @@ func (client Client) FSset(filename string) (int, error) {
 	bucket := client.Db.GridFSBucket()
 
 	file := path.Base(filename)
-	data, e := ioutil.ReadFile(filename)
+	data, e := os.ReadFile(filename)
 	if e != nil {
 		client.log.Error("MONGO_FSSET_READ", e)
 		return -1, e
@@ -55,11 +55,14 @@ func (client Client) FSset(filename string) (int, error) {
 		client.log.Error("MONGO_FSSET_OPEN", e)
 		return -1, e
 	}
-	defer uploadStream.Close()
-
 	filesize, e := uploadStream.Write(data)
 	if e != nil {
+		_ = uploadStream.Close()
 		client.log.Error("MONGO_FSSET_UPLOAD", e)
+		return -1, e
+	}
+	if e = uploadStream.Close(); e != nil {
+		client.log.Error("MONGO_FSSET_CLOSE", e)
 		return -1, e
 	}
 	return filesize, e

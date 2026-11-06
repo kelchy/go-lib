@@ -3,7 +3,6 @@ package mongo
 import (
 	"context"
 	"encoding/json"
-	"log"
 	"time"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
@@ -14,7 +13,6 @@ func Unmarshal(s string) bson.M {
 	var bsonMap bson.M
 	e := json.Unmarshal([]byte(s), &bsonMap)
 	if e != nil {
-		log.Fatal("json. Unmarshal() ERROR:", e)
 		return bson.M{}
 	}
 	return bsonMap
