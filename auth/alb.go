@@ -36,6 +36,7 @@ type ALB struct {
 	keyID  string
 	ttl    time.Duration
 	key    *rsa.PrivateKey
+	keys   map[string]*rsa.PublicKey
 }
 
 var signJWT = func(token *jwt.Token, key *rsa.PrivateKey) (string, error) {
@@ -69,7 +70,10 @@ func NewALB(cfg ALBConfig) (*ALB, error) {
 	if cfg.TTL < time.Minute || cfg.TTL > 24*time.Hour {
 		return nil, errors.New("token TTL must be between one minute and 24 hours")
 	}
-	return &ALB{issuer: cfg.Issuer, keyID: cfg.KeyID, ttl: cfg.TTL, key: key}, nil
+	return &ALB{
+		issuer: cfg.Issuer, keyID: cfg.KeyID, ttl: cfg.TTL, key: key,
+		keys: map[string]*rsa.PublicKey{cfg.KeyID: &key.PublicKey},
+	}, nil
 }
 
 // Generate signs a token for subject with the supplied space-separated scopes.
@@ -120,17 +124,7 @@ func (a *ALB) GenerateWithKeyID(subject string, scopes []string, keyID string) (
 
 // Validate verifies the signature, key ID, issuer, and registered time claims.
 func (a *ALB) Validate(encoded string) (ALBClaims, error) {
-	claims := ALBClaims{}
-	parsed, err := jwt.ParseWithClaims(encoded, &claims, func(token *jwt.Token) (any, error) {
-		if token.Method != jwt.SigningMethodRS256 || token.Header["kid"] != a.keyID {
-			return nil, errors.New("unexpected signing key")
-		}
-		return &a.key.PublicKey, nil
-	}, jwt.WithIssuer(a.issuer), jwt.WithExpirationRequired(), jwt.WithIssuedAt())
-	if err != nil || !parsed.Valid || claims.ID == "" || claims.Subject == "" {
-		return ALBClaims{}, errors.New("invalid or expired token")
-	}
-	return claims, nil
+	return validateALB(encoded, a.issuer, a.keys)
 }
 
 // JWKS returns the JSON Web Key Set containing this signer's public key.

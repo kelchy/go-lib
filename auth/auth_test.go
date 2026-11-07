@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"errors"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -380,4 +381,287 @@ func TestALBGenerateWithKeyID(t *testing.T) {
 			t.Fatalf("GenerateWithKeyID() = (%q, %v), want empty token and %v", encoded, err, want)
 		}
 	})
+}
+
+func albSigner(t *testing.T, keyID string) *ALB {
+	t.Helper()
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatal(err)
+	}
+	a, err := NewALB(ALBConfig{Issuer: "issuer", KeyID: keyID, PrivateKeyPEM: privateKeyPEM(t, key, true)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return a
+}
+
+func albClaimsJSON(t *testing.T, claims ALBClaims) string {
+	t.Helper()
+	b, err := json.Marshal(claims)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(b)
+}
+
+func TestNewALBVerifier(t *testing.T) {
+	a := albSigner(t, "key")
+	public, err := a.JWKS()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var document struct {
+		Keys []map[string]any `json:"keys"`
+	}
+	if err := json.Unmarshal(public, &document); err != nil {
+		t.Fatal(err)
+	}
+	jwks := func(changes ...map[string]any) []byte {
+		t.Helper()
+		keys := make([]map[string]any, len(changes))
+		for i, fields := range changes {
+			keys[i] = make(map[string]any)
+			for name, value := range document.Keys[0] {
+				keys[i][name] = value
+			}
+			for name, value := range fields {
+				keys[i][name] = value
+				if value == nil {
+					delete(keys[i], name)
+				}
+			}
+		}
+		b, err := json.Marshal(map[string]any{"keys": keys})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return b
+	}
+	evenModulus := make([]byte, 256)
+	evenModulus[0] = 0x80
+	evenModulus[len(evenModulus)-1] = 2
+	evenModulusFields := map[string]any{"kid": "even", "n": base64.RawURLEncoding.EncodeToString(evenModulus), "e": "Aw"}
+	for _, tc := range []struct {
+		name   string
+		issuer string
+		jwks   []byte
+		want   string
+	}{
+		{"missing issuer", "", []byte("{"), "issuer is required"},
+		{"nil JWKS", "issuer", nil, "invalid JWKS"},
+		{"invalid JSON", "issuer", []byte("{"), "invalid JWKS"},
+		{"invalid field type", "issuer", jwks(map[string]any{"kid": 42}), "invalid JWKS"},
+		{"no keys", "issuer", jwks(), "JWKS must contain at least one key"},
+		{"null document", "issuer", []byte("null"), "JWKS must contain at least one key"},
+		{"null keys", "issuer", []byte(`{"keys":null}`), "JWKS must contain at least one key"},
+		{"null key entry", "issuer", []byte(`{"keys":[null]}`), "JWKS key ID is required"},
+		{"missing key ID", "issuer", jwks(map[string]any{"kid": nil, "kty": "EC"}), "JWKS key ID is required"},
+		{"duplicate key ID", "issuer", jwks(nil, map[string]any{"kty": "EC"}), "duplicate JWKS key ID"},
+		{"non RSA key", "issuer", jwks(nil, map[string]any{"kid": "bad", "kty": "EC", "alg": "ES256", "n": "!"}), "JWKS key must be RSA with at least 2048 bits"},
+		{"undersized key", "issuer", jwks(map[string]any{"n": base64.RawURLEncoding.EncodeToString(a.key.N.Bytes()[1:]), "alg": "RS512"}), "JWKS key must be RSA with at least 2048 bits"},
+		{"wrong algorithm", "issuer", jwks(map[string]any{"alg": "RS512", "e": "!"}), "JWKS key must be an RS256 signing key"},
+		{"wrong use", "issuer", jwks(map[string]any{"use": "enc", "n": "!"}), "JWKS key must be an RS256 signing key"},
+		{"bad modulus", "issuer", jwks(map[string]any{"n": "!"}), "invalid JWKS key encoding"},
+		{"missing modulus", "issuer", jwks(map[string]any{"n": nil}), "invalid JWKS key encoding"},
+		{"even modulus", "issuer", jwks(evenModulusFields), "invalid JWKS key encoding"},
+		{"even modulus after valid key", "issuer", jwks(nil, evenModulusFields), "invalid JWKS key encoding"},
+		{"bad exponent", "issuer", jwks(map[string]any{"e": "!"}), "invalid JWKS key encoding"},
+		{"missing exponent", "issuer", jwks(map[string]any{"e": nil}), "invalid JWKS key encoding"},
+		{"zero exponent", "issuer", jwks(map[string]any{"e": "AA"}), "invalid JWKS key encoding"},
+		{"one exponent", "issuer", jwks(map[string]any{"e": "AQ"}), "invalid JWKS key encoding"},
+		{"even exponent", "issuer", jwks(map[string]any{"e": "Ag"}), "invalid JWKS key encoding"},
+		{"even exponent after valid key", "issuer", jwks(nil, map[string]any{"kid": "even", "e": "Ag"}), "invalid JWKS key encoding"},
+		{"exponent above maximum", "issuer", jwks(map[string]any{"e": "gAAAAA"}), "invalid JWKS key encoding"},
+		{"exponent overflow", "issuer", jwks(map[string]any{"e": "AQAAAAAAAAAB"}), "invalid JWKS key encoding"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if v, err := NewALBVerifier(ALBVerifierConfig{Issuer: tc.issuer, JWKS: tc.jwks}); err == nil || err.Error() != tc.want || v != nil {
+				t.Fatalf("NewALBVerifier() = (%v, %v), want nil and %q", v, err, tc.want)
+			}
+		})
+	}
+	for _, tc := range []struct {
+		name     string
+		jwks     []byte
+		count    int
+		exponent int
+	}{
+		{"round trip", public, 1, a.key.E},
+		{"optional fields omitted", jwks(map[string]any{"alg": nil, "use": nil}), 1, a.key.E},
+		{"several keys", jwks(nil, map[string]any{"kid": "second"}), 2, a.key.E},
+		{"private fields ignored", jwks(map[string]any{"d": map[string]any{"ignored": true}, "p": 42, "q": false, "dp": []int{1}, "dq": "!", "qi": nil, "oth": "!"}), 1, a.key.E},
+		{"minimum exponent", jwks(map[string]any{"e": "Aw"}), 1, 3},
+		{"maximum exponent", jwks(map[string]any{"e": "f____w"}), 1, 1<<31 - 1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			v, err := NewALBVerifier(ALBVerifierConfig{Issuer: "issuer", JWKS: tc.jwks})
+			if err != nil {
+				t.Fatal(err)
+			}
+			key := v.keys["key"]
+			if v.issuer != "issuer" || len(v.keys) != tc.count || key == nil || key.N.Cmp(a.key.N) != 0 || key.E != tc.exponent {
+				t.Fatalf("unexpected verifier: %+v, key: %+v", v, key)
+			}
+		})
+	}
+}
+
+func TestALBVerifierValidate(t *testing.T) {
+	a, other := albSigner(t, "key"), albSigner(t, "second")
+	var keys []json.RawMessage
+	for _, signer := range []*ALB{a, other} {
+		b, err := signer.JWKS()
+		if err != nil {
+			t.Fatal(err)
+		}
+		var document struct {
+			Keys []json.RawMessage `json:"keys"`
+		}
+		if err := json.Unmarshal(b, &document); err != nil {
+			t.Fatal(err)
+		}
+		keys = append(keys, document.Keys...)
+	}
+	b, err := json.Marshal(map[string]any{"keys": keys})
+	if err != nil {
+		t.Fatal(err)
+	}
+	v, err := NewALBVerifier(ALBVerifierConfig{Issuer: "issuer", JWKS: b})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, signer := range []*ALB{a, other} {
+		for _, keyID := range []string{"", "api-key"} {
+			var encoded string
+			var generated ALBClaims
+			if keyID == "" {
+				encoded, generated, err = signer.Generate("user", []string{"read", "write"})
+			} else {
+				encoded, generated, err = signer.GenerateWithKeyID("user", []string{"read", "write"}, keyID)
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if claims, err := v.Validate(encoded); err != nil || albClaimsJSON(t, claims) != albClaimsJSON(t, generated) {
+				t.Fatalf("Validate() = (%+v, %v), want %+v", claims, err, generated)
+			}
+		}
+	}
+	now := time.Now()
+	good := ALBClaims{RegisteredClaims: jwt.RegisteredClaims{Issuer: "issuer", Subject: "user", ID: "id", ExpiresAt: jwt.NewNumericDate(now.Add(time.Hour))}}
+	for _, tc := range []struct {
+		name   string
+		change func(*jwt.Token, *ALBClaims)
+		key    any
+	}{
+		{"malformed", nil, a.key},
+		{"unknown key ID", func(token *jwt.Token, _ *ALBClaims) { token.Header["kid"] = "unknown" }, a.key},
+		{"missing key ID", func(token *jwt.Token, _ *ALBClaims) { delete(token.Header, "kid") }, a.key},
+		{"non string key ID", func(token *jwt.Token, _ *ALBClaims) { token.Header["kid"] = 42 }, a.key},
+		{"wrong key", func(*jwt.Token, *ALBClaims) {}, other.key},
+		{"wrong issuer", func(_ *jwt.Token, claims *ALBClaims) { claims.Issuer = "Issuer" }, a.key},
+		{"missing issuer", func(_ *jwt.Token, claims *ALBClaims) { claims.Issuer = "" }, a.key},
+		{"expired", func(_ *jwt.Token, claims *ALBClaims) { claims.ExpiresAt = jwt.NewNumericDate(now.Add(-time.Second)) }, a.key},
+		{"missing expiration", func(_ *jwt.Token, claims *ALBClaims) { claims.ExpiresAt = nil }, a.key},
+		{"future issued at", func(_ *jwt.Token, claims *ALBClaims) { claims.IssuedAt = jwt.NewNumericDate(now.Add(time.Hour)) }, a.key},
+		{"future not before", func(_ *jwt.Token, claims *ALBClaims) { claims.NotBefore = jwt.NewNumericDate(now.Add(time.Hour)) }, a.key},
+		{"missing subject", func(_ *jwt.Token, claims *ALBClaims) { claims.Subject = "" }, a.key},
+		{"missing token ID", func(_ *jwt.Token, claims *ALBClaims) { claims.ID = "" }, a.key},
+		{"none", func(token *jwt.Token, _ *ALBClaims) { token.Method = jwt.SigningMethodNone }, jwt.UnsafeAllowNoneSignatureType},
+		{"HS256 key confusion", func(token *jwt.Token, _ *ALBClaims) { token.Method = jwt.SigningMethodHS256 }, x509.MarshalPKCS1PublicKey(&a.key.PublicKey)},
+		{"RS512", func(token *jwt.Token, _ *ALBClaims) { token.Method = jwt.SigningMethodRS512 }, a.key},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			claims := good
+			token := jwt.NewWithClaims(jwt.SigningMethodRS256, &claims)
+			token.Header["kid"] = "key"
+			encoded := "not a jwt"
+			if tc.change != nil {
+				tc.change(token, &claims)
+				token.Header["alg"] = token.Method.Alg()
+				var err error
+				encoded, err = token.SignedString(tc.key)
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+			if claims, err := v.Validate(encoded); err == nil || err.Error() != "invalid or expired token" || !reflect.DeepEqual(claims, ALBClaims{}) {
+				t.Fatalf("Validate() = (%+v, %v), want empty claims and invalid or expired token", claims, err)
+			}
+		})
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodRS256, good)
+	token.Header["kid"] = "key"
+	encoded, err := token.SignedString(a.key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if claims, err := v.Validate(encoded); err != nil || albClaimsJSON(t, claims) != albClaimsJSON(t, good) {
+		t.Fatalf("Validate() without optional claims = (%+v, %v), want %+v", claims, err, good)
+	}
+}
+
+func TestALBValidateKeyIDHeader(t *testing.T) {
+	a := albSigner(t, "key")
+	claims := ALBClaims{RegisteredClaims: jwt.RegisteredClaims{Issuer: "issuer", Subject: "user", ID: "id", ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour))}}
+	for _, tc := range []struct {
+		name  string
+		keyID any
+		valid bool
+	}{
+		{"matching", "key", true},
+		{"missing", nil, false},
+		{"number", 42, false},
+		{"boolean", true, false},
+		{"array", []string{"key"}, false},
+		{"object", map[string]string{"kid": "key"}, false},
+		{"empty", "", false},
+		{"unknown", "other", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
+			if tc.keyID != nil {
+				token.Header["kid"] = tc.keyID
+			}
+			encoded, err := token.SignedString(a.key)
+			if err != nil {
+				t.Fatal(err)
+			}
+			validated, err := a.Validate(encoded)
+			if tc.valid {
+				if err != nil || albClaimsJSON(t, validated) != albClaimsJSON(t, claims) {
+					t.Fatalf("Validate() with kid %v = (%+v, %v), want %+v", tc.keyID, validated, err, claims)
+				}
+			} else if err == nil || err.Error() != "invalid or expired token" || !reflect.DeepEqual(validated, ALBClaims{}) {
+				t.Fatalf("Validate() with kid %v = (%+v, %v), want empty claims and invalid or expired token", tc.keyID, validated, err)
+			}
+		})
+	}
+}
+
+func TestALBValidateZeroValue(t *testing.T) {
+	signer := albSigner(t, "key")
+	encoded, claims, err := signer.Generate("user", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
+	token.Header["kid"] = ""
+	emptyKeyID, err := token.SignedString(signer.key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	a := &ALB{}
+	for name, token := range map[string]string{
+		"malformed":           "not a jwt",
+		"signed":              encoded,
+		"signed empty key ID": emptyKeyID,
+	} {
+		t.Run(name, func(t *testing.T) {
+			if claims, err := a.Validate(token); err == nil || err.Error() != "invalid or expired token" || !reflect.DeepEqual(claims, ALBClaims{}) {
+				t.Fatalf("Validate() = (%+v, %v), want empty claims and invalid or expired token", claims, err)
+			}
+		})
+	}
 }
