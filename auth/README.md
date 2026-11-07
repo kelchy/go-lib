@@ -26,3 +26,4 @@ checks signature, key ID, issuer, expiration, and issued-at. `JWKS` returns the
 public key document for the configured signer. The default token lifetime is
 24 hours and can be shortened through `ALBConfig.TTL`.
 `GenerateWithKeyID` also emits a `key_id` claim for the API key behind the token, and `Generate` omits it.
+`NewALBVerifier` creates a verifier from an issuer and public JWKS bytes, and its `Validate` method verifies tokens without a private key.
